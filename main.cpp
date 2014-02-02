@@ -184,7 +184,7 @@ int main()
         RansEncInit(&rans);
 
         uint8_t* ptr = out_buf + out_max_size; // *end* of output buffer
-        for (size_t i=in_size; i != ~(size_t)0; i--) { // NB: working in reverse!
+        for (size_t i=in_size - 1; i != ~(size_t)0; i--) { // NB: working in reverse!
             int s = in_bytes[i];
             RansEncPutSymbol(&rans, &ptr, &syms[s], prob_bits);
         }
