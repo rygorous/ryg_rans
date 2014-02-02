@@ -1,0 +1,37 @@
+This is a public-domain implementation of a byte-aligned rANS encoder.
+
+rans_byte.h has all the good stuff and comments on how to use it.
+
+I intend to write a blog post about the design soon. Until then, sneak preview!
+
+Results on my machine (Sandy Bridge i7-2600K):
+
+rANS encode:
+13081268 clocks, 17.0 clocks/symbol
+12735303 clocks, 16.6 clocks/symbol
+12752611 clocks, 16.6 clocks/symbol
+12536928 clocks, 16.3 clocks/symbol
+12982085 clocks, 16.9 clocks/symbol
+rANS: 435115 bytes
+17250005 clocks, 22.4 clocks/symbol
+16792353 clocks, 21.8 clocks/symbol
+17176585 clocks, 22.3 clocks/symbol
+17357113 clocks, 22.6 clocks/symbol
+16650388 clocks, 21.7 clocks/symbol
+decode ok!
+
+interleaved rANS encode:
+13563293 clocks, 17.6 clocks/symbol
+13120902 clocks, 17.1 clocks/symbol
+13094290 clocks, 17.0 clocks/symbol
+13218747 clocks, 17.2 clocks/symbol
+13273693 clocks, 17.3 clocks/symbol
+interleaved rANS: 435117 bytes
+11373290 clocks, 14.8 clocks/symbol
+11195653 clocks, 14.6 clocks/symbol
+11190862 clocks, 14.6 clocks/symbol
+11285814 clocks, 14.7 clocks/symbol
+12600642 clocks, 16.4 clocks/symbol
+decode ok!
+
+-Fabian "ryg" Giesen, Feb 2014.
