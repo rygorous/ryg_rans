@@ -150,7 +150,7 @@ typedef struct {
 } RansSymbol;
 
 // Initializes a symbol to start "start" and frequency "freq"
-static void RansSymbolInit(RansSymbol* s, uint32_t start, uint32_t freq)
+static inline void RansSymbolInit(RansSymbol* s, uint32_t start, uint32_t freq)
 {
     s->start = start;
     s->freq = freq;
