@@ -158,8 +158,9 @@ static inline void RansSymbolInit(RansSymbol* s, uint32_t start, uint32_t freq)
         s->rcp_freq = s->rcp_shift = 0;
     else {
         // Alverson, "Integer Division using reciprocals"
+        // shift=ceil(log2(freq))
         uint32_t shift = 0;
-        while ((freq >> shift) > 1)
+        while (freq > (1u << shift))
             shift++;
 
         s->rcp_freq = (uint32_t) (((1ull << (shift + 31)) + freq-1) / freq);
