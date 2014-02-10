@@ -156,7 +156,7 @@ int main()
         RansWordTablesInitSymbol(&tab, (uint8_t)s, stats.cum_freqs[s], stats.freqs[s]);
 
     size_t out_max_size = in_size + (in_size >> 3) + 128;
-    uint8_t* out_buf = new uint8_t[out_max_size];
+    uint8_t* out_buf = new uint8_t[out_max_size + 16]; // extra bytes at end
     uint8_t* dec_bytes = new uint8_t[in_size];
 
     // try rANS encode
@@ -291,6 +291,7 @@ int main()
     memset(dec_bytes, 0xcc, in_size);
 
     // try SIMD rANS encode
+    // this is written for clarity not speed.
     printf("\ninterleaved SIMD rANS encode: (encode itself isn't SIMD)\n");
     for (int run=0; run < 5; run++) {
         double start_time = timer();
@@ -303,19 +304,10 @@ int main()
         uint16_t* ptr = (uint16_t *)(out_buf + out_max_size); // *end* of output buffer
 
         // last few bytes
-        for (size_t i=in_size; (i & 7) != 0; i--) { // NB: working in reverse
+        for (size_t i=in_size; i > 0; i--) { // NB: working in reverse
             int s = in_bytes[i - 1];
             RansWordEncPut(&rans[(i - 1) & 7], &ptr, stats.cum_freqs[s], stats.freqs[s]);
         }
-
-        for (size_t i=(in_size & ~7); i > 0; i -= 2) { // NB: working in reverse!
-            int s1 = in_bytes[i-1];
-            int s0 = in_bytes[i-2];
-            int b = (i-2) & 7;
-            RansWordEncPut(&rans[b+1], &ptr, stats.cum_freqs[s1], stats.freqs[s1]);
-            RansWordEncPut(&rans[b+0], &ptr, stats.cum_freqs[s0], stats.freqs[s0]);
-        }
-
         for (int i=8; i > 0; i--)
             RansWordEncFlush(&rans[i - 1], &ptr);
         rans_begin = ptr;
