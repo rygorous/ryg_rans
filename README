@@ -1,37 +1,44 @@
 This is a public-domain implementation of a byte-aligned rANS encoder.
 
 rans_byte.h has all the good stuff and comments on how to use it.
+rans_word_sse41.h is a world-aligned SIMD decoder (I'll write more about this
+later).
+
+See my blog http://fgiesen.wordpress.com/ for some notes on the design.
 
 I intend to write a blog post about the design soon. Until then, sneak preview!
 
-Results on my machine (Sandy Bridge i7-2600K):
+Results on my machine (Sandy Bridge i7-2600K) with 64-bit code:
 
 rANS encode:
-13081268 clocks, 17.0 clocks/symbol
-12735303 clocks, 16.6 clocks/symbol
-12752611 clocks, 16.6 clocks/symbol
-12536928 clocks, 16.3 clocks/symbol
-12982085 clocks, 16.9 clocks/symbol
-rANS: 435115 bytes
-17250005 clocks, 22.4 clocks/symbol
-16792353 clocks, 21.8 clocks/symbol
-17176585 clocks, 22.3 clocks/symbol
-17357113 clocks, 22.6 clocks/symbol
-16650388 clocks, 21.7 clocks/symbol
+12896496 clocks, 16.8 clocks/symbol (192.8MiB/s)
+12486912 clocks, 16.2 clocks/symbol (199.2MiB/s)
+12511975 clocks, 16.3 clocks/symbol (198.8MiB/s)
+12660765 clocks, 16.5 clocks/symbol (196.4MiB/s)
+12550285 clocks, 16.3 clocks/symbol (198.2MiB/s)
+rANS: 435113 bytes
+17023550 clocks, 22.1 clocks/symbol (146.1MiB/s)
+18081509 clocks, 23.5 clocks/symbol (137.5MiB/s)
+16901632 clocks, 22.0 clocks/symbol (147.1MiB/s)
+17166188 clocks, 22.3 clocks/symbol (144.9MiB/s)
+17235859 clocks, 22.4 clocks/symbol (144.3MiB/s)
 decode ok!
 
 interleaved rANS encode:
-13563293 clocks, 17.6 clocks/symbol
-13120902 clocks, 17.1 clocks/symbol
-13094290 clocks, 17.0 clocks/symbol
-13218747 clocks, 17.2 clocks/symbol
-13273693 clocks, 17.3 clocks/symbol
+9618004 clocks, 12.5 clocks/symbol (258.6MiB/s)
+9488277 clocks, 12.3 clocks/symbol (262.1MiB/s)
+9460194 clocks, 12.3 clocks/symbol (262.9MiB/s)
+9582025 clocks, 12.5 clocks/symbol (259.5MiB/s)
+9332017 clocks, 12.1 clocks/symbol (266.5MiB/s)
 interleaved rANS: 435117 bytes
-11373290 clocks, 14.8 clocks/symbol
-11195653 clocks, 14.6 clocks/symbol
-11190862 clocks, 14.6 clocks/symbol
-11285814 clocks, 14.7 clocks/symbol
-12600642 clocks, 16.4 clocks/symbol
+10687601 clocks, 13.9 clocks/symbol (232.7MB/s)
+10637918 clocks, 13.8 clocks/symbol (233.8MB/s)
+10909652 clocks, 14.2 clocks/symbol (227.9MB/s)
+10947637 clocks, 14.2 clocks/symbol (227.2MB/s)
+10529464 clocks, 13.7 clocks/symbol (236.2MB/s)
 decode ok!
+
+Note that this is running "book1" which is a relatively short test, and
+the measurement setup is not great.
 
 -Fabian "ryg" Giesen, Feb 2014.
