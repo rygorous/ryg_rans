@@ -166,10 +166,13 @@ int main()
 
     // try rANS encode
     uint8_t *rans_begin;
-    RansSymbol syms[256];
+    RansEncSymbol esyms[256];
+    RansDecSymbol dsyms[256];
 
-    for (int i=0; i < 256; i++)
-        RansSymbolInit(&syms[i], stats.cum_freqs[i], stats.freqs[i]);
+    for (int i=0; i < 256; i++) {
+        RansEncSymbolInit(&esyms[i], stats.cum_freqs[i], stats.freqs[i], prob_bits);
+        RansDecSymbolInit(&dsyms[i], stats.cum_freqs[i], stats.freqs[i]);
+    }
 
     // ---- regular rANS encode/decode. Typical usage.
 
@@ -186,7 +189,7 @@ int main()
         uint8_t* ptr = out_buf + out_max_size; // *end* of output buffer
         for (size_t i=in_size; i > 0; i--) { // NB: working in reverse!
             int s = in_bytes[i-1];
-            RansEncPutSymbol(&rans, &ptr, &syms[s], prob_bits);
+            RansEncPutSymbol(&rans, &ptr, &esyms[s]);
         }
         RansEncFlush(&rans, &ptr);
         rans_begin = ptr;
@@ -209,7 +212,7 @@ int main()
         for (size_t i=0; i < in_size; i++) {
             uint32_t s = cum2sym[RansDecGet(&rans, prob_bits)];
             dec_bytes[i] = (uint8_t) s;
-            RansDecAdvanceSymbol(&rans, &ptr, &syms[s], prob_bits);
+            RansDecAdvanceSymbol(&rans, &ptr, &dsyms[s], prob_bits);
         }
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
@@ -242,14 +245,14 @@ int main()
         // odd number of bytes?
         if (in_size & 1) {
             int s = in_bytes[in_size - 1];
-            RansEncPutSymbol(&rans0, &ptr, &syms[s], prob_bits);
+            RansEncPutSymbol(&rans0, &ptr, &esyms[s]);
         }
 
         for (size_t i=(in_size & ~1); i > 0; i -= 2) { // NB: working in reverse!
             int s1 = in_bytes[i-1];
             int s0 = in_bytes[i-2];
-            RansEncPutSymbol(&rans1, &ptr, &syms[s1], prob_bits);
-            RansEncPutSymbol(&rans0, &ptr, &syms[s0], prob_bits);
+            RansEncPutSymbol(&rans1, &ptr, &esyms[s1]);
+            RansEncPutSymbol(&rans0, &ptr, &esyms[s0]);
         }
         RansEncFlush(&rans1, &ptr);
         RansEncFlush(&rans0, &ptr);
@@ -276,8 +279,8 @@ int main()
             uint32_t s1 = cum2sym[RansDecGet(&rans1, prob_bits)];
             dec_bytes[i+0] = (uint8_t) s0;
             dec_bytes[i+1] = (uint8_t) s1;
-            RansDecAdvanceSymbolStep(&rans0, &syms[s0], prob_bits);
-            RansDecAdvanceSymbolStep(&rans1, &syms[s1], prob_bits);
+            RansDecAdvanceSymbolStep(&rans0, &dsyms[s0], prob_bits);
+            RansDecAdvanceSymbolStep(&rans1, &dsyms[s1], prob_bits);
             RansDecRenorm(&rans0, &ptr);
             RansDecRenorm(&rans1, &ptr);
         }
@@ -286,7 +289,7 @@ int main()
         if (in_size & 1) {
             uint32_t s0 = cum2sym[RansDecGet(&rans0, prob_bits)];
             dec_bytes[in_size - 1] = (uint8_t) s0;
-            RansDecAdvanceSymbol(&rans0, &ptr, &syms[s0], prob_bits);
+            RansDecAdvanceSymbol(&rans0, &ptr, &dsyms[s0], prob_bits);
         }
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;

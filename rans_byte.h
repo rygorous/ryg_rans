@@ -8,6 +8,12 @@
 
 #include <stdint.h>
 
+#ifdef assert
+#define RansAssert assert
+#else
+#define RansAssert(x)
+#endif
+
 // READ ME FIRST:
 //
 // This is designed like a typical arithmetic coder API, but there's three
@@ -141,22 +147,80 @@ static inline void RansDecAdvance(RansState* r, uint8_t** pptr, uint32_t start, 
 // That's all you need for a full encoder; below here are some utility
 // functions with extra convenience or optimizations.
 
-// Description for a symbol
+// Encoder symbol description
+// This (admittedly odd) selection of parameters was chosen to make
+// RansEncPutSymbol as cheap as possible.
 typedef struct {
-    uint32_t start;     // Start of range
-    uint32_t freq;      // Frequency of symbol (=size of range)
-    uint32_t rcp_freq;  // Reciprocal frequency
-    uint32_t rcp_shift; // Reciprocal shift
-} RansSymbol;
+    uint32_t x_max;     // (Exclusive) upper bound of pre-normalization interval
+    uint32_t rcp_freq;  // Fixed-point reciprocal frequency
+    uint32_t bias;      // Bias
+    uint16_t cmpl_freq; // Complement of frequency: (1 << scale_bits) - freq
+    uint16_t rcp_shift; // Reciprocal shift
+} RansEncSymbol;
 
-// Initializes a symbol to start "start" and frequency "freq"
-static inline void RansSymbolInit(RansSymbol* s, uint32_t start, uint32_t freq)
+// Decoder symbols are straightforward.
+typedef struct {
+    uint16_t start;     // Start of range.
+    uint16_t freq;      // Symbol frequency.
+} RansDecSymbol;
+
+// Initializes an encoder symbol to start "start" and frequency "freq"
+static inline void RansEncSymbolInit(RansEncSymbol* s, uint32_t start, uint32_t freq, uint32_t scale_bits)
 {
-    s->start = start;
-    s->freq = freq;
-    if (freq < 2) // 0 is unsupported (div by zero!) and 1 requires special care
-        s->rcp_freq = s->rcp_shift = 0;
-    else {
+    RansAssert(scale_bits <= 16);
+    RansAssert(start <= (1u << scale_bits));
+    RansAssert(freq <= (1u << scale_bits) - start);
+
+    // Say M := 1 << scale_bits.
+    //
+    // The original encoder does:
+    //   x_new = (x/freq)*M + start + (x%freq)
+    //
+    // The fast encoder does (schematically):
+    //   q     = mul_hi(x, rcp_freq) >> rcp_shift   (division)
+    //   r     = x - q*freq                         (remainder)
+    //   x_new = q*M + bias + r                     (new x)
+    // plugging in r into x_new yields:
+    //   x_new = bias + x + q*(M - freq)
+    //        =: bias + x + q*cmpl_freq             (*)
+    //
+    // and we can just precompute cmpl_freq. Now we just need to
+    // set up our parameters such that the original encoder and
+    // the fast encoder agree.
+
+    s->x_max = ((RANS_BYTE_L >> scale_bits) << 8) * freq;
+    s->cmpl_freq = (uint16_t) ((1 << scale_bits) - freq);
+    if (freq < 2) {
+        // freq=0 symbols are never valid to encode, so it doesn't matter what
+        // we set our values to.
+        //
+        // freq=1 is tricky, since the reciprocal of 1 is 1; unfortunately,
+        // our fixed-point reciprocal approximation can only multiply by values
+        // smaller than 1.
+        //
+        // So we use the "next best thing": rcp_freq=0xffffffff, rcp_shift=0.
+        // This gives:
+        //   q = mul_hi(x, rcp_freq) >> rcp_shift
+        //     = mul_hi(x, (1<<32) - 1)) >> 0
+        //     = floor(x - x/(2^32))
+        //     = x - 1 if 1 <= x < 2^32
+        // and we know that x>0 (x=0 is never in a valid normalization interval).
+        //
+        // So we now need to choose the other parameters such that
+        //   x_new = x*M + start
+        // plug it in:
+        //     x*M + start                   (desired result)
+        //   = bias + x + q*cmpl_freq        (*)
+        //   = bias + x + (x - 1)*(M - 1)    (plug in q=x-1, cmpl_freq)
+        //   = bias + 1 + (x - 1)*M
+        //   = x*M + (bias + 1 - M)
+        //
+        // so we have start = bias + 1 - M, or equivalently
+        //   bias = start + M - 1.
+        s->rcp_freq = ~0u;
+        s->rcp_shift = 0;
+        s->bias = start + (1 << scale_bits) - 1;
+    } else {
         // Alverson, "Integer Division using reciprocals"
         // shift=ceil(log2(freq))
         uint32_t shift = 0;
@@ -165,16 +229,33 @@ static inline void RansSymbolInit(RansSymbol* s, uint32_t start, uint32_t freq)
 
         s->rcp_freq = (uint32_t) (((1ull << (shift + 31)) + freq-1) / freq);
         s->rcp_shift = shift - 1;
+
+        // With these values, 'q' is the correct quotient, so we
+        // have bias=start.
+        s->bias = start;
     }
+}
+
+// Initialize a decoder symbol to start "start" and frequency "freq"
+static inline void RansDecSymbolInit(RansDecSymbol* s, uint32_t start, uint32_t freq)
+{
+    RansAssert(start <= (1 << 16));
+    RansAssert(freq <= (1 << 16) - start);
+    s->start = (uint16_t) start;
+    s->freq = (uint16_t) freq;
 }
 
 // Encodes a given symbol. This is faster than straight RansEnc since we can do
 // multiplications instead of a divide.
-static inline void RansEncPutSymbol(RansState* r, uint8_t** pptr, RansSymbol const* sym, uint32_t scale_bits)
+//
+// See RansEncSymbolInit for a description of how this works.
+static inline void RansEncPutSymbol(RansState* r, uint8_t** pptr, RansEncSymbol const* sym)
 {
+    RansAssert(sym->x_max != 0); // can't encode symbol with freq=0
+
     // renormalize
     uint32_t x = *r;
-    uint32_t x_max = ((RANS_BYTE_L >> scale_bits) << 8) * sym->freq; // this turns into a shift.
+    uint32_t x_max = sym->x_max;
     if (x >= x_max) {
         uint8_t* ptr = *pptr;
         do {
@@ -185,21 +266,12 @@ static inline void RansEncPutSymbol(RansState* r, uint8_t** pptr, RansSymbol con
     }
 
     // x = C(s,x)
-    if (sym->freq == 1)
-        x = (x << scale_bits) + sym->start;
-    else {
-        // written strangely so the compiler generates a multiply high, but only
-        // uses 32-bit shifts.
-        uint32_t q = (uint32_t) (((uint64_t)x * sym->rcp_freq) >> 32) >> sym->rcp_shift;
-        uint32_t p = x - q * sym->freq;
-        x = (q << scale_bits) + sym->start + p;
-    }
-
-    *r = x;
+    uint32_t q = (uint32_t) (((uint64_t)x * sym->rcp_freq) >> 32) >> sym->rcp_shift;
+    *r = x + sym->bias + q * sym->cmpl_freq;
 }
 
 // Equivalent to RansDecAdvance that takes a symbol.
-static inline void RansDecAdvanceSymbol(RansState* r, uint8_t** pptr, RansSymbol const* sym, uint32_t scale_bits)
+static inline void RansDecAdvanceSymbol(RansState* r, uint8_t** pptr, RansDecSymbol const* sym, uint32_t scale_bits)
 {
     RansDecAdvance(r, pptr, sym->start, sym->freq, scale_bits);
 }
@@ -217,11 +289,10 @@ static inline void RansDecAdvanceStep(RansState* r, uint32_t start, uint32_t fre
 }
 
 // Equivalent to RansDecAdvanceStep that takes a symbol.
-static inline void RansDecAdvanceSymbolStep(RansState* r, RansSymbol const* sym, uint32_t scale_bits)
+static inline void RansDecAdvanceSymbolStep(RansState* r, RansDecSymbol const* sym, uint32_t scale_bits)
 {
     RansDecAdvanceStep(r, sym->start, sym->freq, scale_bits);
 }
-
 
 // Renormalize.
 static inline void RansDecRenorm(RansState* r, uint8_t** pptr)
