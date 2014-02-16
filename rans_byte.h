@@ -266,6 +266,9 @@ static inline void RansEncPutSymbol(RansState* r, uint8_t** pptr, RansEncSymbol 
     }
 
     // x = C(s,x)
+    // NOTE: written this way so we get a 32-bit "multiply high" when
+    // available. If you're on a 64-bit platform with cheap multiplies
+    // (e.g. x64), just bake the +32 into rcp_shift.
     uint32_t q = (uint32_t) (((uint64_t)x * sym->rcp_freq) >> 32) >> sym->rcp_shift;
     *r = x + sym->bias + q * sym->cmpl_freq;
 }
