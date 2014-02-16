@@ -1,6 +1,7 @@
 This is a public-domain implementation of a byte-aligned rANS encoder.
 
 rans_byte.h has all the good stuff and comments on how to use it.
+rans64.h is a version for 64-bit architectures (faster and more accurate).
 rans_word_sse41.h is a world-aligned SIMD decoder (I'll write more about this
 later).
 
@@ -8,7 +9,10 @@ See my blog http://fgiesen.wordpress.com/ for some notes on the design.
 
 I intend to write a blog post about the design soon. Until then, sneak preview!
 
-Results on my machine (Sandy Bridge i7-2600K) with 64-bit code:
+
+Results on my machine (Sandy Bridge i7-2600K) with rans_byte in 64-bit mode:
+
+----
 
 rANS encode:
 12896496 clocks, 16.8 clocks/symbol (192.8MiB/s)
@@ -37,6 +41,42 @@ interleaved rANS: 435117 bytes
 10947637 clocks, 14.2 clocks/symbol (227.2MB/s)
 10529464 clocks, 13.7 clocks/symbol (236.2MB/s)
 decode ok!
+
+----
+
+And here's rans64 in 64-bit mode:
+
+----
+
+rANS encode:
+10256075 clocks, 13.3 clocks/symbol (242.3MiB/s)
+10620132 clocks, 13.8 clocks/symbol (234.1MiB/s)
+10043080 clocks, 13.1 clocks/symbol (247.6MiB/s)
+9878205 clocks, 12.8 clocks/symbol (251.8MiB/s)
+10122645 clocks, 13.2 clocks/symbol (245.7MiB/s)
+rANS: 435116 bytes
+14244155 clocks, 18.5 clocks/symbol (174.6MiB/s)
+15072524 clocks, 19.6 clocks/symbol (165.0MiB/s)
+14787604 clocks, 19.2 clocks/symbol (168.2MiB/s)
+14736556 clocks, 19.2 clocks/symbol (168.8MiB/s)
+14686129 clocks, 19.1 clocks/symbol (169.3MiB/s)
+decode ok!
+
+interleaved rANS encode:
+7691159 clocks, 10.0 clocks/symbol (323.3MiB/s)
+7182692 clocks, 9.3 clocks/symbol (346.2MiB/s)
+7060804 clocks, 9.2 clocks/symbol (352.2MiB/s)
+6949201 clocks, 9.0 clocks/symbol (357.9MiB/s)
+6876415 clocks, 8.9 clocks/symbol (361.6MiB/s)
+interleaved rANS: 435120 bytes
+8133574 clocks, 10.6 clocks/symbol (305.7MB/s)
+8631618 clocks, 11.2 clocks/symbol (288.1MB/s)
+8643790 clocks, 11.2 clocks/symbol (287.7MB/s)
+8449364 clocks, 11.0 clocks/symbol (294.3MB/s)
+8331444 clocks, 10.8 clocks/symbol (298.5MB/s)
+decode ok!
+
+----
 
 Note that this is running "book1" which is a relatively short test, and
 the measurement setup is not great.
