@@ -1,14 +1,20 @@
-// Word-aligned SSE 4.1 rANS encoder/decoder - public domain - Fabian 'ryg' Giesen
+// Word-aligned SSE 4.2 rANS encoder/decoder - public domain - Fabian 'ryg' Giesen
 //
 // This implementation has a regular rANS encoder and a 4-way interleaved SIMD
 // decoder. Like rans_byte.h, it's intended to illustrate the idea, not to
 // be used as a drop-in arithmetic coder.
 
-#ifndef RANS_WORD_SSE41_HEADER
-#define RANS_WORD_SSE41_HEADER
+#ifndef RANS_WORD_SSE42_HEADER
+#define RANS_WORD_SSE42_HEADER
 
 #include <stdint.h>
-#include <smmintrin.h>
+#if defined(__GNUC__)
+#include <x86intrin.h>
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#else
+#error Compiler-specific code needed
+#endif
 
 // READ ME FIRST:
 //
@@ -146,12 +152,12 @@ static inline void RansSimdDecInit(RansSimdDec* r, uint16_t** pptr)
 // Decodes a four symbols in parallel using the given tables.
 static inline uint32_t RansSimdDecSym(RansSimdDec* r, RansWordTables const* tab)
 {
-    __m128i freq_bias;
+    __m128i freq_bias_lo, freq_bias_hi, freq_bias;
     __m128i freq, bias;
     __m128i xscaled;
     __m128i x = *r;
     __m128i slots = _mm_and_si128(x, _mm_set1_epi32(RANS_WORD_M - 1));
-    uint32_t i0 = (uint32_t) _mm_extract_epi32(slots, 0);
+    uint32_t i0 = _mm_cvtsi128_si32(slots);
     uint32_t i1 = (uint32_t) _mm_extract_epi32(slots, 1);
     uint32_t i2 = (uint32_t) _mm_extract_epi32(slots, 2);
     uint32_t i3 = (uint32_t) _mm_extract_epi32(slots, 3);
@@ -160,10 +166,12 @@ static inline uint32_t RansSimdDecSym(RansSimdDec* r, RansWordTables const* tab)
     uint32_t s = tab->slot2sym[i0] | (tab->slot2sym[i1] << 8) | (tab->slot2sym[i2] << 16) | (tab->slot2sym[i3] << 24);
 
     // gather freq_bias
-    freq_bias = _mm_cvtsi32_si128(tab->slots[i0].u32);
-    freq_bias = _mm_insert_epi32(freq_bias, tab->slots[i1].u32, 1);
-    freq_bias = _mm_insert_epi32(freq_bias, tab->slots[i2].u32, 2);
-    freq_bias = _mm_insert_epi32(freq_bias, tab->slots[i3].u32, 3);
+    // NOTE: collect elements 0-1 and 2-3 independently for higher ILP
+    freq_bias_lo = _mm_cvtsi32_si128(tab->slots[i0].u32);
+    freq_bias_lo = _mm_insert_epi32(freq_bias_lo, tab->slots[i1].u32, 1);
+    freq_bias_hi = _mm_cvtsi32_si128(tab->slots[i2].u32);
+    freq_bias_hi = _mm_insert_epi32(freq_bias_hi, tab->slots[i3].u32, 1);
+    freq_bias = _mm_unpacklo_epi64(freq_bias_lo, freq_bias_hi);
 
     // s, x = D(x)
     xscaled = _mm_srli_epi32(x, RANS_WORD_SCALE_BITS);
@@ -196,9 +204,6 @@ static inline void RansSimdDecRenorm(RansSimdDec* r, uint16_t** pptr)
         _mm_setr_epi8( 0,1,_,_, 2,3,_,_, 4,5,_,_, 6,7,_,_ )  // 1111
 #undef _
     };
-    static uint8_t const numbits[16] = {
-        0,1,1,2, 1,2,2,3, 1,2,2,3, 2,3,3,4
-    };
 
     __m128i x = *r;
 
@@ -208,7 +213,13 @@ static inline void RansSimdDecRenorm(RansSimdDec* r, uint16_t** pptr)
     // order-preserving manner.
     __m128i x_biased = _mm_xor_si128(x, _mm_set1_epi32((int) 0x80000000));
     __m128i greater = _mm_cmpgt_epi32(_mm_set1_epi32(RANS_WORD_L - 0x80000000), x_biased);
-    int mask = _mm_movemask_ps(_mm_castsi128_ps(greater));
+    // NOTE: mask should have type unsigned int, because it is used
+    // to index into array. In x86-64 assembly array indices must be
+    // 64-bit wide. Extending signed int variable to 64-bit will generate
+    // an additional instruction (MOVSX), but extending of unsigned int
+    // variable to 64-bit is free, as all instructions which write the
+    // lower 32-bit of x86-64 register implicitly clear the high 32 bits.
+    unsigned int mask = _mm_movemask_ps(_mm_castsi128_ps(greater));
 
     // NOTE: this will read slightly past the end of the input buffer.
     // In practice, either pad the input buffer by 8 bytes at the end,
@@ -217,7 +228,7 @@ static inline void RansSimdDecRenorm(RansSimdDec* r, uint16_t** pptr)
     __m128i xshifted = _mm_slli_epi32(x, 16);
     __m128i newx = _mm_or_si128(xshifted, _mm_shuffle_epi8(memvals, shuffles[mask]));
     *r = _mm_blendv_epi8(x, newx, greater);
-    *pptr += numbits[mask];
+    *pptr += _mm_popcnt_u32(mask);
 }
 
-#endif // RANS_WORD_SSE41_HEADER
+#endif // RANS_WORD_SSE42_HEADER

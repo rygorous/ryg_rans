@@ -11,7 +11,7 @@ entropy coder from the ANS family, as described in Jarek Duda's paper
   to entropy). The trade-off is that this version will be slower on 32-bit
   machines, and the output bitstream is not endian-neutral. "main64.cpp" is
   the corresponding example.
-- "rans_word_sse41.h" has a SIMD decoder (SSE 4.1 to be precise) that does IO
+- "rans_word_sse42.h" has a SIMD decoder (SSE 4.2 to be precise) that does IO
   in units of 16-bit words. It has less precision than either rans_byte or
   rans64 (meaning that it doesn't get as close to entropy) and requires
   at least 4 independent streams of data to be useful; however, it is also a

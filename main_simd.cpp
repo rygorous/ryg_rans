@@ -8,7 +8,7 @@
 #include <string.h>
 #include <assert.h>
 
-#include "rans_word_sse41.h"
+#include "rans_word_sse42.h"
 
 #if defined(__GNUC__)
 #include <x86intrin.h>
