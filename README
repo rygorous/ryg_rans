@@ -1,14 +1,39 @@
-This is a public-domain implementation of a byte-aligned rANS encoder.
+This is a public-domain implementation of several rANS variants. rANS is an
+entropy coder from the ANS family, as described in Jarek Duda's paper
+"Asymmetric numeral systems" (http://arxiv.org/abs/1311.2540).
 
-rans_byte.h has all the good stuff and comments on how to use it.
-rans64.h is a version for 64-bit architectures (faster and more accurate).
-rans_word_sse41.h is a world-aligned SIMD decoder (I'll write more about this
-later).
+- "rans_byte.h" has a byte-aligned rANS encoder/decoder and some comments on
+  how to use it. This implementation should work on all 32-bit architectures.
+  "main.cpp" is an example program that shows how to use it.
+- "rans64.h" is a 64-bit version that emits entire 32-bit words at a time. It
+  is (usually) a good deal faster than rans_byte on 64-bit architectures, and
+  also makes for a very precise arithmetic coder (i.e. it gets quite close
+  to entropy). The trade-off is that this version will be slower on 32-bit
+  machines, and the output bitstream is not endian-neutral. "main64.cpp" is
+  the corresponding example.
+- "rans_word_sse41.h" has a SIMD decoder (SSE 4.1 to be precise) that does IO
+  in units of 16-bit words. It has less precision than either rans_byte or
+  rans64 (meaning that it doesn't get as close to entropy) and requires
+  at least 4 independent streams of data to be useful; however, it is also a
+  good deal faster. "main_simd.cpp" shows how to use it.
 
 See my blog http://fgiesen.wordpress.com/ for some notes on the design.
 
-I intend to write a blog post about the design soon. Until then, sneak preview!
+I've also written a paper on interleaving output streams from multiple entropy
+coders:
 
+  http://arxiv.org/abs/1402.3392
+
+this documents the underlying design for "rans_word_sse41", and also shows how
+the same approach generalizes to e.g. GPU implementations, provided there are
+enough independent contexts coded at the same time to fill up a warp/wavefront
+or whatever your favorite GPU's terminology for its native SIMD width is.
+
+Finally, there's also "main_alias.cpp", which shows how to combine rANS with
+the alias method to get O(1) symbol lookup with table size proportional to the
+number of symbols. I presented an overview of the underlying idea here:
+
+  http://fgiesen.wordpress.com/2014/02/18/rans-with-static-probability-distributions/
 
 Results on my machine (Sandy Bridge i7-2600K) with rans_byte in 64-bit mode:
 
@@ -78,7 +103,26 @@ decode ok!
 
 ----
 
+Finally, here's the rans_word_sse41 decoder on an 8-way interleaved stream:
+
+----
+
+SIMD rANS: 435626 bytes
+4597641 clocks, 6.0 clocks/symbol (540.8MB/s)
+4514356 clocks, 5.9 clocks/symbol (550.8MB/s)
+4780918 clocks, 6.2 clocks/symbol (520.1MB/s)
+4532913 clocks, 5.9 clocks/symbol (548.5MB/s)
+4554527 clocks, 5.9 clocks/symbol (545.9MB/s)
+decode ok!
+
+----
+
+There's also an experimental 16-way interleaved AVX2 version that hits
+faster rates still, developed by my colleague Won Chun; I will post it
+soon.
+
 Note that this is running "book1" which is a relatively short test, and
-the measurement setup is not great.
+the measurement setup is not great, so take the results with a grain
+of salt.
 
 -Fabian "ryg" Giesen, Feb 2014.
