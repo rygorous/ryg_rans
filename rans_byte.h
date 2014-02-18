@@ -58,6 +58,21 @@ static inline void RansEncInit(RansState* r)
     *r = RANS_BYTE_L;
 }
 
+// Renormalize the encoder. Internal function.
+static inline RansState RansEncRenorm(RansState x, uint8_t** pptr, uint32_t freq, uint32_t scale_bits)
+{
+    uint32_t x_max = ((RANS_BYTE_L >> scale_bits) << 8) * freq; // this turns into a shift.
+    if (x >= x_max) {
+        uint8_t* ptr = *pptr;
+        do {
+            *--ptr = (uint8_t) (x & 0xff);
+            x >>= 8;
+        } while (x >= x_max);
+        *pptr = ptr;
+    }
+    return x;
+}
+
 // Encodes a single symbol with range start "start" and frequency "freq".
 // All frequencies are assumed to sum to "1 << scale_bits", and the
 // resulting bytes get written to ptr (which is updated).
@@ -68,16 +83,7 @@ static inline void RansEncInit(RansState* r)
 static inline void RansEncPut(RansState* r, uint8_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 {
     // renormalize
-    uint32_t x = *r;
-    uint32_t x_max = ((RANS_BYTE_L >> scale_bits) << 8) * freq; // this turns into a shift.
-    if (x >= x_max) {
-        uint8_t* ptr = *pptr;
-        do {
-            *--ptr = (uint8_t) (x & 0xff);
-            x >>= 8;
-        } while (x >= x_max);
-        *pptr = ptr;
-    }
+    uint32_t x = RansEncRenorm(*r, pptr, freq, scale_bits);
 
     // x = C(s,x)
     *r = ((x / freq) << scale_bits) + (x % freq) + start;
