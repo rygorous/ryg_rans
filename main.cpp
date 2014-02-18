@@ -8,7 +8,7 @@
 
 #include "rans_byte.h"
 
-#include <intrin.h>
+#include "utils.h"
 
 // This is just the sample program. All the meat is in rans_byte.h.
 
@@ -44,17 +44,6 @@ static uint8_t* read_file(char const* filename, size_t* out_size)
         *out_size = size;
 
     return buf;
-}
-
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
-double timer()
-{
-    LARGE_INTEGER ctr, freq;
-    QueryPerformanceCounter(&ctr);
-    QueryPerformanceFrequency(&freq);
-    return 1.0 * ctr.QuadPart / freq.QuadPart;
 }
 
 // ---- Stats
@@ -181,7 +170,7 @@ int main()
     printf("rANS encode:\n");
     for (int run=0; run < 5; run++) {
         double start_time = timer();
-        uint64_t enc_start_time = __rdtsc();
+        uint64_t enc_start_time = rdtsc();
 
         RansState rans;
         RansEncInit(&rans);
@@ -194,7 +183,7 @@ int main()
         RansEncFlush(&rans, &ptr);
         rans_begin = ptr;
 
-        uint64_t enc_clocks = __rdtsc() - enc_start_time;
+        uint64_t enc_clocks = rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
         printf("%lld clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
     }
@@ -203,7 +192,7 @@ int main()
     // try rANS decode
     for (int run=0; run < 5; run++) {
         double start_time = timer();
-        uint64_t dec_start_time = __rdtsc();
+        uint64_t dec_start_time = rdtsc();
 
         RansState rans;
         uint8_t* ptr = rans_begin;
@@ -215,7 +204,7 @@ int main()
             RansDecAdvanceSymbol(&rans, &ptr, &dsyms[s], prob_bits);
         }
 
-        uint64_t dec_clocks = __rdtsc() - dec_start_time;
+        uint64_t dec_clocks = rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
         printf("%lld clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
     }
@@ -234,7 +223,7 @@ int main()
     printf("\ninterleaved rANS encode:\n");
     for (int run=0; run < 5; run++) {
         double start_time = timer();
-        uint64_t enc_start_time = __rdtsc();
+        uint64_t enc_start_time = rdtsc();
 
         RansState rans0, rans1;
         RansEncInit(&rans0);
@@ -258,7 +247,7 @@ int main()
         RansEncFlush(&rans0, &ptr);
         rans_begin = ptr;
 
-        uint64_t enc_clocks = __rdtsc() - enc_start_time;
+        uint64_t enc_clocks = rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
         printf("%lld clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
     }
@@ -267,7 +256,7 @@ int main()
     // try interleaved rANS decode
     for (int run=0; run < 5; run++) {
         double start_time = timer();
-        uint64_t dec_start_time = __rdtsc();
+        uint64_t dec_start_time = rdtsc();
 
         RansState rans0, rans1;
         uint8_t* ptr = rans_begin;
@@ -292,7 +281,7 @@ int main()
             RansDecAdvanceSymbol(&rans0, &ptr, &dsyms[s0], prob_bits);
         }
 
-        uint64_t dec_clocks = __rdtsc() - dec_start_time;
+        uint64_t dec_clocks = rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
         printf("%lld clocks, %.1f clocks/symbol (%5.1fMB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
     }
