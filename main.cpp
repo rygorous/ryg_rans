@@ -3,12 +3,22 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdint.h>
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 #include <string.h>
 #include <assert.h>
 
 #include "rans_byte.h"
 
+#if defined(__GNUC__)
+#include <x86intrin.h>
+#elif defined(_MSC_VER)
 #include <intrin.h>
+#else
+#error Compiler-specific code needed
+#endif
+
+#include "timer.h"
 
 // This is just the sample program. All the meat is in rans_byte.h.
 
@@ -44,17 +54,6 @@ static uint8_t* read_file(char const* filename, size_t* out_size)
         *out_size = size;
 
     return buf;
-}
-
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
-double timer()
-{
-    LARGE_INTEGER ctr, freq;
-    QueryPerformanceCounter(&ctr);
-    QueryPerformanceFrequency(&freq);
-    return 1.0 * ctr.QuadPart / freq.QuadPart;
 }
 
 // ---- Stats
@@ -196,7 +195,7 @@ int main()
 
         uint64_t enc_clocks = __rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
-        printf("%lld clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
+        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
     }
     printf("rANS: %d bytes\n", (int) (out_buf + out_max_size - rans_begin));
 
@@ -217,7 +216,7 @@ int main()
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
-        printf("%lld clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
+        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
     }
 
     // check decode results
@@ -260,7 +259,7 @@ int main()
 
         uint64_t enc_clocks = __rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
-        printf("%lld clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
+        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
     }
     printf("interleaved rANS: %d bytes\n", (int) (out_buf + out_max_size - rans_begin));
 
@@ -294,7 +293,7 @@ int main()
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
-        printf("%lld clocks, %.1f clocks/symbol (%5.1fMB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
+        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
     }
 
     // check decode results
