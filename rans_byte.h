@@ -83,7 +83,7 @@ static inline RansState RansEncRenorm(RansState x, uint8_t** pptr, uint32_t freq
 static inline void RansEncPut(RansState* r, uint8_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 {
     // renormalize
-    uint32_t x = RansEncRenorm(*r, pptr, freq, scale_bits);
+    RansState x = RansEncRenorm(*r, pptr, freq, scale_bits);
 
     // x = C(s,x)
     *r = ((x / freq) << scale_bits) + (x % freq) + start;
