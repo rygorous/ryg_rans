@@ -261,7 +261,7 @@ static inline void Rans64DecSymbolInit(Rans64DecSymbol* s, uint32_t start, uint3
 // See RansEncSymbolInit for a description of how this works.
 static inline void Rans64EncPutSymbol(Rans64State* r, uint32_t** pptr, Rans64EncSymbol const* sym, uint32_t scale_bits)
 {
-    Rans64Assert(sym->x_max != 0); // can't encode symbol with freq=0
+    Rans64Assert(sym->freq != 0); // can't encode symbol with freq=0
 
     // renormalize
     uint64_t x = *r;
