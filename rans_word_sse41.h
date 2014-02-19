@@ -150,12 +150,12 @@ static inline void RansSimdDecInit(RansSimdDec* r, uint16_t** pptr)
 // Decodes a four symbols in parallel using the given tables.
 static inline uint32_t RansSimdDecSym(RansSimdDec* r, RansWordTables const* tab)
 {
-    __m128i freq_bias;
+    __m128i freq_bias_lo, freq_bias_hi, freq_bias;
     __m128i freq, bias;
     __m128i xscaled;
     __m128i x = r->simd;
     __m128i slots = _mm_and_si128(x, _mm_set1_epi32(RANS_WORD_M - 1));
-    uint32_t i0 = (uint32_t) _mm_extract_epi32(slots, 0);
+    uint32_t i0 = (uint32_t) _mm_cvtsi128_si32(slots);
     uint32_t i1 = (uint32_t) _mm_extract_epi32(slots, 1);
     uint32_t i2 = (uint32_t) _mm_extract_epi32(slots, 2);
     uint32_t i3 = (uint32_t) _mm_extract_epi32(slots, 3);
@@ -164,10 +164,11 @@ static inline uint32_t RansSimdDecSym(RansSimdDec* r, RansWordTables const* tab)
     uint32_t s = tab->slot2sym[i0] | (tab->slot2sym[i1] << 8) | (tab->slot2sym[i2] << 16) | (tab->slot2sym[i3] << 24);
 
     // gather freq_bias
-    freq_bias = _mm_cvtsi32_si128(tab->slots[i0].u32);
-    freq_bias = _mm_insert_epi32(freq_bias, tab->slots[i1].u32, 1);
-    freq_bias = _mm_insert_epi32(freq_bias, tab->slots[i2].u32, 2);
-    freq_bias = _mm_insert_epi32(freq_bias, tab->slots[i3].u32, 3);
+    freq_bias_lo = _mm_cvtsi32_si128(tab->slots[i0].u32);
+    freq_bias_lo = _mm_insert_epi32(freq_bias_lo, tab->slots[i1].u32, 1);
+    freq_bias_hi = _mm_cvtsi32_si128(tab->slots[i2].u32);
+    freq_bias_hi = _mm_insert_epi32(freq_bias_hi, tab->slots[i3].u32, 1);
+    freq_bias = _mm_unpacklo_epi64(freq_bias_lo, freq_bias_hi);
 
     // s, x = D(x)
     xscaled = _mm_srli_epi32(x, RANS_WORD_SCALE_BITS);
