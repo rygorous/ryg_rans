@@ -42,6 +42,7 @@ double timer()
 #define __STDC_FORMAT_MACROS
 #include <time.h>
 #include <inttypes.h>
+#include <assert.h>
 
 static inline double timer()
 {
