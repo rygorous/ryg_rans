@@ -176,7 +176,7 @@ static inline uint32_t RansSimdDecSym(RansSimdDec* r, RansWordTables const* tab)
 // Renormalize after decoding a symbol.
 static inline void RansSimdDecRenorm(RansSimdDec* r, uint16_t** pptr)
 {
-    static __m128i const shuffles[16] = {
+    static ALIGNSPEC(int8_t const, shuffles[16][16], 16) = {
 #define _ -1 // for readability
         { _,_,_,_, _,_,_,_, _,_,_,_, _,_,_,_ }, // 0000
         { 0,1,_,_, _,_,_,_, _,_,_,_, _,_,_,_ }, // 0001
@@ -208,16 +208,18 @@ static inline void RansSimdDecRenorm(RansSimdDec* r, uint16_t** pptr)
     // order-preserving manner.
     __m128i x_biased = _mm_xor_si128(x, _mm_set1_epi32((int) 0x80000000));
     __m128i greater = _mm_cmpgt_epi32(_mm_set1_epi32(RANS_WORD_L - 0x80000000), x_biased);
-    int mask = _mm_movemask_ps(_mm_castsi128_ps(greater));
+    unsigned int mask = _mm_movemask_ps(_mm_castsi128_ps(greater));
 
     // NOTE: this will read slightly past the end of the input buffer.
     // In practice, either pad the input buffer by 8 bytes at the end,
     // or switch to the non-SIMD version once you get close to the end.
     __m128i memvals = _mm_loadl_epi64((const __m128i*)*pptr);
     __m128i xshifted = _mm_slli_epi32(x, 16);
-    __m128i newx = _mm_or_si128(xshifted, _mm_shuffle_epi8(memvals, shuffles[mask]));
+    __m128i shufmask = _mm_load_si128((const __m128i*)shuffles[mask]);
+    __m128i newx = _mm_or_si128(xshifted, _mm_shuffle_epi8(memvals, shufmask));
     *r = _mm_blendv_epi8(x, newx, greater);
     *pptr += numbits[mask];
 }
 
 #endif // RANS_WORD_SSE41_HEADER
+
