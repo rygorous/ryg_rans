@@ -327,7 +327,7 @@ int main()
         // last few bytes
         for (size_t i=(in_size & ~7); i < in_size; i++) {
             RansSimdDec* which = (i & 4) != 0 ? &rans1 : &rans0;
-            uint8_t s = RansWordDecSym(&which->m128i_u32[i & 3], &tab);
+            uint8_t s = RansWordDecSym(&which->lane[i & 3], &tab);
             dec_bytes[i] = s;
         }
 

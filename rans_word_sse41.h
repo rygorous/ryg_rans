@@ -41,7 +41,11 @@
 
 typedef uint32_t RansWordEnc;
 typedef uint32_t RansWordDec;
-typedef __m128i RansSimdDec;
+
+typedef union {
+    __m128i simd;
+    uint32_t lane[4];
+} RansSimdDec;
 
 union RansWordSlot {
     uint32_t u32;
@@ -139,7 +143,7 @@ static inline void RansWordDecRenorm(RansWordDec* r, uint16_t** pptr)
 // Initializes a SIMD rANS decoder.
 static inline void RansSimdDecInit(RansSimdDec* r, uint16_t** pptr)
 {
-    *r = _mm_loadu_si128((const __m128i*)*pptr);
+    r->simd = _mm_loadu_si128((const __m128i*)*pptr);
     *pptr += 2*4;
 }
 
@@ -149,7 +153,7 @@ static inline uint32_t RansSimdDecSym(RansSimdDec* r, RansWordTables const* tab)
     __m128i freq_bias;
     __m128i freq, bias;
     __m128i xscaled;
-    __m128i x = *r;
+    __m128i x = r->simd;
     __m128i slots = _mm_and_si128(x, _mm_set1_epi32(RANS_WORD_M - 1));
     uint32_t i0 = (uint32_t) _mm_extract_epi32(slots, 0);
     uint32_t i1 = (uint32_t) _mm_extract_epi32(slots, 1);
@@ -169,7 +173,7 @@ static inline uint32_t RansSimdDecSym(RansSimdDec* r, RansWordTables const* tab)
     xscaled = _mm_srli_epi32(x, RANS_WORD_SCALE_BITS);
     freq = _mm_and_si128(freq_bias, _mm_set1_epi32(0xffff));
     bias = _mm_srli_epi32(freq_bias, 16);
-    *r = _mm_add_epi32(_mm_mullo_epi32(xscaled, freq), bias);
+    r->simd = _mm_add_epi32(_mm_mullo_epi32(xscaled, freq), bias);
     return s;
 }
 
@@ -200,7 +204,7 @@ static inline void RansSimdDecRenorm(RansSimdDec* r, uint16_t** pptr)
         0,1,1,2, 1,2,2,3, 1,2,2,3, 2,3,3,4
     };
 
-    __m128i x = *r;
+    __m128i x = r->simd;
 
     // NOTE: SSE2+ only offer a signed 32-bit integer compare, while we
     // need unsigned. So we subtract 0x80000000 before the compare,
@@ -217,7 +221,7 @@ static inline void RansSimdDecRenorm(RansSimdDec* r, uint16_t** pptr)
     __m128i xshifted = _mm_slli_epi32(x, 16);
     __m128i shufmask = _mm_load_si128((const __m128i*)shuffles[mask]);
     __m128i newx = _mm_or_si128(xshifted, _mm_shuffle_epi8(memvals, shufmask));
-    *r = _mm_blendv_epi8(x, newx, greater);
+    r->simd = _mm_blendv_epi8(x, newx, greater);
     *pptr += numbits[mask];
 }
 
