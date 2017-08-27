@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include <smmintrin.h>
 
+#include "platform.h"
+
 // READ ME FIRST:
 //
 // The intention in this version is to demonstrate a design where the decoder
