@@ -170,7 +170,7 @@ int main()
 
         uint64_t enc_clocks = __rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
-        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
     }
     printf("rANS: %d bytes\n", (int) (out_buf + out_max_size - (uint8_t *)rans_begin));
 
@@ -191,7 +191,7 @@ int main()
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
-        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
     }
 
     // check decode results
@@ -233,7 +233,7 @@ int main()
 
         uint64_t enc_clocks = __rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
-        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
     }
     printf("interleaved rANS: %d bytes\n", (int) (out_buf + out_max_size - (uint8_t*)rans_begin));
 
@@ -264,7 +264,7 @@ int main()
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
-        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1fMB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
     }
 
     // check decode results
@@ -301,7 +301,7 @@ int main()
 
         uint64_t enc_clocks = __rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
-        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1fMiB/s)\n", enc_clocks, 1.0 * enc_clocks / in_size, 1.0 * in_size / (enc_time * 1048576.0));
     }
     printf("SIMD rANS: %d bytes\n", (int) (out_buf + out_max_size - (uint8_t*)rans_begin));
 
@@ -333,7 +333,7 @@ int main()
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
-        printf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1fMB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
     }
 
     // check decode results
