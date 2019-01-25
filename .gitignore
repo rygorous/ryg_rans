@@ -1,4 +1,3 @@
-exam
-exam64
-exam_alias
-exam_simd_sse41
+*.o
+*.d
+*.exe

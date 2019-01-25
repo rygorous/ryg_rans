@@ -1,18 +1,62 @@
-LIBS=-lm -lrt
+	CXXFLAGS = -MD -MP -Wall -Wswitch -Werror -g -std=c++11 -march=native
+LDFLAGS =  -fPIC
+LDLIBS = 
 
-all: exam exam64 exam_simd_sse41 exam_alias
+# Includes
+INCLUDES := -I. 
 
-exam: main.cpp platform.h rans_byte.h
-	g++ -o $@ $< -O3 -march=native $(LIBS)
+CXX = g++
+COMP = $(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
+LINK = $(CXX) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+COMPLINK = $(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $@ $< $(LDLIBS)
 
-exam64: main64.cpp platform.h rans64.h
-	g++ -o $@ $< -O3 -march=native $(LIBS)
 
-exam_simd_sse41: main_simd.cpp platform.h rans_word_sse41.h
-	g++ -o $@ $< -O3 -march=native $(LIBS)
+OBJS := helper.o main_alias.o main_simd.o main.o main64.o main_nonchar.o
+DEPS := $(subst .o,.d,$(OBJS))
+TARGET := main_alias.exe main_simd.exe main.exe main64.exe main_nonchar.exe
 
-exam_alias: main_alias.cpp platform.h rans_byte.h
-	g++ -o $@ $< -O3 -march=native $(LIBS)
+.SUFFIXES:	.cpp .o	
 
+ifdef DEBUG
+CXXFLAGS += -O0 -ggdb3 -DDEBUG
+else
+CXXFLAGS += -O3
+endif
+
+
+# General directory independent rules
+%.o:		%.cpp
+			$(COMP)
+
+%:			%.o
+			$(LINK)
+
+%:			%.cpp
+			$(COMPLINK)			
+
+all: $(TARGET)
+
+main_alias.exe: main_alias.o
+	$(LINK)
+	
+main_simd.exe: main_simd.o
+	$(LINK)
+	
+main.exe: main.o
+	$(LINK)
+	
+main64.exe: main64.o
+	$(LINK)
+	
+main_nonchar.exe: main_nonchar.o helper.o
+	$(LINK)
+		
+
+#$(TARGET): $(OBJS) Makefile
+#	$(LINK)
+
+.PHONY:		clean
 clean: 
-	rm -rf  exam exam64 exam_simd_sse41 exam_alias
+	rm -rf $(TARGET) $(OBJS) $(DEPS) 
+	
+-include $(DEPS)
