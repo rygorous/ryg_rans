@@ -80,6 +80,8 @@ void SymbolStats::normalize_freqs(uint32_t target_total)
     calc_cum_freqs();
     uint32_t cur_total = cum_freqs[256];
     
+    assert(target_total >= cur_total);
+
     // resample distribution based on cumulative freqs
     for (int i = 1; i <= 256; i++)
         cum_freqs[i] = ((uint64_t)target_total * cum_freqs[i])/cur_total;

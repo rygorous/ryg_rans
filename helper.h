@@ -76,6 +76,8 @@ public:
 
 		size_t cur_total = cum_freqs.back();
 
+//	    assert(target_total >= cur_total);
+
 		// resample distribution based on cumulative freqs
 		for (size_t i = 1; i <= freqs.size(); i++)
 			cum_freqs[i] = ((uint64_t)target_total * cum_freqs[i])/cur_total;
