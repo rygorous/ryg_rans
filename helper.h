@@ -69,10 +69,10 @@ public:
 		calc_cum_freqs();
 
 	    std:: cout << "min: " <<min << " max: " << max << std::endl;
-	    for(int i = 0; i<static_cast<int>(freqs.size()); i++){
-	    	std::cout << i << ": " << i + min << " " << freqs[i] << " " << cum_freqs[i] << std::endl;
-	    }
-	    std::cout <<  cum_freqs.back() << std::endl;
+//	    for(int i = 0; i<static_cast<int>(freqs.size()); i++){
+//	    	std::cout << i << ": " << i + min << " " << freqs[i] << " " << cum_freqs[i] << std::endl;
+//	    }
+//	    std::cout <<  cum_freqs.back() << std::endl;
 
 		size_t cur_total = cum_freqs.back();
 
@@ -128,10 +128,10 @@ public:
 
 
 	    std:: cout << "min: " <<min << " max: " << max << std::endl;
-	    for(int i = 0; i<static_cast<int>(freqs.size()); i++){
-	    	std::cout << i << ": " << i + min << " " << freqs[i] << " " << cum_freqs[i] << std::endl;
-	    }
-	    std::cout <<  cum_freqs.back() << std::endl;
+//	    for(int i = 0; i<static_cast<int>(freqs.size()); i++){
+//	    	std::cout << i << ": " << i + min << " " << freqs[i] << " " << cum_freqs[i] << std::endl;
+//	    }
+//	    std::cout <<  cum_freqs.back() << std::endl;
 	}
 
 	int min = 0;
