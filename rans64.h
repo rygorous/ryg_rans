@@ -10,8 +10,7 @@
 // 
 // In short, as written, this code works on 64-bit targets only!
 
-#ifndef RANS64_HEADER
-#define RANS64_HEADER
+#pragma once
 
 #include <stdint.h>
 
@@ -314,5 +313,3 @@ static inline void Rans64DecRenorm(Rans64State* r, uint32_t** pptr)
 
     *r = x;
 }
-
-#endif // RANS64_HEADER

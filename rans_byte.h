@@ -3,8 +3,7 @@
 // Not intended to be "industrial strength"; just meant to illustrate the general
 // idea.
 
-#ifndef RANS_BYTE_HEADER
-#define RANS_BYTE_HEADER
+#pragma once
 
 #include <stdint.h>
 
@@ -316,5 +315,3 @@ static inline void RansDecRenorm(RansState* r, uint8_t** pptr)
 
     *r = x;
 }
-
-#endif // RANS_BYTE_HEADER

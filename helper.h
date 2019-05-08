@@ -1,5 +1,4 @@
-#ifndef HELPER_H_
-#define HELPER_H_
+#pragma once
 
 #include "platform.h"
 #include <stdio.h>
@@ -147,5 +146,3 @@ private:
 
 
 };
-
-#endif /* HELPER_H_ */

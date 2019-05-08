@@ -4,8 +4,7 @@
 // decoder. Like rans_byte.h, it's intended to illustrate the idea, not to
 // be used as a drop-in arithmetic coder.
 
-#ifndef RANS_WORD_SSE41_HEADER
-#define RANS_WORD_SSE41_HEADER
+#pragma once
 
 #include <stdint.h>
 #include <smmintrin.h>
@@ -225,6 +224,3 @@ static inline void RansSimdDecRenorm(RansSimdDec* r, uint16_t** pptr)
     r->simd = _mm_blendv_epi8(x, newx, greater);
     *pptr += numbits[mask];
 }
-
-#endif // RANS_WORD_SSE41_HEADER
-

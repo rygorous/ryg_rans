@@ -3,8 +3,7 @@
 // Not intended to be "industrial strength"; just meant to illustrate the general
 // idea.
 
-#ifndef Rans32_DIRECT_HEADER
-#define Rans32_DIRECT_HEADER
+#pragma once
 
 #include <stdint.h>
 
@@ -47,7 +46,7 @@
 // Between this and our byte-aligned emission, we use 31 (not 32!) bits.
 // This is done intentionally because exact reciprocals for 31-bit uints
 // fit in 32-bit uints: this permits some optimizations during encoding.
-#define RANS32_L (1u << 23)  // lower bound of our normalization interval
+#define RANS32_L (1u << 16)  // lower bound of our normalization interval
 
 // State for a rANS encoder. Yep, that's all there is to it.
 typedef uint32_t Rans32State;
@@ -58,21 +57,6 @@ static inline void Rans32EncInit(Rans32State* r)
     *r = RANS32_L;
 }
 
-// Renormalize the encoder. Internal function.
-static inline Rans32State Rans32EncRenorm(Rans32State x, uint8_t** pptr, uint32_t freq, uint32_t scale_bits)
-{
-    uint32_t x_max = ((RANS32_L >> scale_bits) << 8) * freq; // this turns into a shift.
-    if (x >= x_max) {
-        uint8_t* ptr = *pptr;
-        do {
-            *--ptr = (uint8_t) (x & 0xff);
-            x >>= 8;
-        } while (x >= x_max);
-        *pptr = ptr;
-    }
-    return x;
-}
-
 // Encodes a single symbol with range start "start" and frequency "freq".
 // All frequencies are assumed to sum to "1 << scale_bits", and the
 // resulting bytes get written to ptr (which is updated).
@@ -80,42 +64,42 @@ static inline Rans32State Rans32EncRenorm(Rans32State x, uint8_t** pptr, uint32_
 // NOTE: With rANS, you need to encode symbols in *reverse order*, i.e. from
 // beginning to end! Likewise, the output bytestream is written *backwards*:
 // ptr starts pointing at the end of the output buffer and keeps decrementing.
-static inline void Rans32EncPut(Rans32State* r, uint8_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
+static inline void Rans32EncPut(Rans32State* r, uint16_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 {
-    // renormalize
-    Rans32State x = Rans32EncRenorm(*r, pptr, freq, scale_bits);
+    uint32_t x = *r;
+    if (x >= ((RANS32_L >> scale_bits) << 16) * freq) {
+        *pptr -= 1;
+        **pptr = (uint16_t) (x & 0xffff);
+        x >>= 16;
+    }
 
     // x = C(s,x)
     *r = ((x / freq) << scale_bits) + (x % freq) + start;
 }
 
 // Flushes the rANS encoder.
-static inline void Rans32EncFlush(Rans32State* r, uint8_t** pptr)
+static inline void Rans32EncFlush(Rans32State* r, uint16_t** pptr)
 {
     uint32_t x = *r;
-    uint8_t* ptr = *pptr;
+    uint16_t* ptr = *pptr;
 
-    ptr -= 4;
-    ptr[0] = (uint8_t) (x >> 0);
-    ptr[1] = (uint8_t) (x >> 8);
-    ptr[2] = (uint8_t) (x >> 16);
-    ptr[3] = (uint8_t) (x >> 24);
+    ptr -= 2;
+    ptr[0] = (uint16_t) (x >> 0);
+    ptr[1] = (uint16_t) (x >> 16);
 
     *pptr = ptr;
 }
 
 // Initializes a rANS decoder.
 // Unlike the encoder, the decoder works forwards as you'd expect.
-static inline void Rans32DecInit(Rans32State* r, uint8_t** pptr)
+static inline void Rans32DecInit(Rans32State* r, uint16_t** pptr)
 {
     uint32_t x;
-    uint8_t* ptr = *pptr;
+    uint16_t* ptr = *pptr;
 
     x  = ptr[0] << 0;
-    x |= ptr[1] << 8;
-    x |= ptr[2] << 16;
-    x |= ptr[3] << 24;
-    ptr += 4;
+    x |= ptr[1] << 16;
+    ptr += 2;
 
     *pptr = ptr;
     *r = x;
@@ -130,7 +114,7 @@ static inline uint32_t Rans32DecGet(Rans32State* r, uint32_t scale_bits)
 // Advances in the bit stream by "popping" a single symbol with range start
 // "start" and frequency "freq". All frequencies are assumed to sum to "1 << scale_bits",
 // and the resulting bytes get written to ptr (which is updated).
-static inline void Rans32DecAdvance(Rans32State* r, uint8_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
+static inline void Rans32DecAdvance(Rans32State* r, uint16_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 {
     uint32_t mask = (1u << scale_bits) - 1;
 
@@ -140,8 +124,8 @@ static inline void Rans32DecAdvance(Rans32State* r, uint8_t** pptr, uint32_t sta
 
     // renormalize
     if (x < RANS32_L) {
-        uint8_t* ptr = *pptr;
-        do x = (x << 8) | *ptr++; while (x < RANS32_L);
+    	uint16_t* ptr = *pptr;
+        do x = (x << 16) | *ptr++; while (x < RANS32_L);
         *pptr = ptr;
     }
 
@@ -194,7 +178,7 @@ static inline void Rans32EncSymbolInit(Rans32EncSymbol* s, uint32_t start, uint3
     // set up our parameters such that the original encoder and
     // the fast encoder agree.
 
-    s->x_max = ((RANS32_L >> scale_bits) << 8) * freq;
+    s->x_max = ((RANS32_L >> scale_bits) << 16) * freq;
     s->cmpl_freq = (uint16_t) ((1 << scale_bits) - freq);
     if (freq < 2) {
         // freq=0 symbols are never valid to encode, so it doesn't matter what
@@ -255,7 +239,7 @@ static inline void Rans32DecSymbolInit(Rans32DecSymbol* s, uint32_t start, uint3
 // multiplications instead of a divide.
 //
 // See Rans32EncSymbolInit for a description of how this works.
-static inline void Rans32EncPutSymbol(Rans32State* r, uint8_t** pptr, Rans32EncSymbol const* sym)
+static inline void Rans32EncPutSymbol(Rans32State* r, uint16_t** pptr, Rans32EncSymbol const* sym)
 {
     Rans32Assert(sym->x_max != 0); // can't encode symbol with freq=0
 
@@ -263,12 +247,9 @@ static inline void Rans32EncPutSymbol(Rans32State* r, uint8_t** pptr, Rans32EncS
     uint32_t x = *r;
     uint32_t x_max = sym->x_max;
     if (x >= x_max) {
-        uint8_t* ptr = *pptr;
-        do {
-            *--ptr = (uint8_t) (x & 0xff);
-            x >>= 8;
-        } while (x >= x_max);
-        *pptr = ptr;
+        *pptr -= 1;
+        **pptr = (uint16_t) (x & 0xffff);
+        x >>= 16;
     }
 
     // x = C(s,x)
@@ -280,7 +261,7 @@ static inline void Rans32EncPutSymbol(Rans32State* r, uint8_t** pptr, Rans32EncS
 }
 
 // Equivalent to Rans32DecAdvance that takes a symbol.
-static inline void Rans32DecAdvanceSymbol(Rans32State* r, uint8_t** pptr, Rans32DecSymbol const* sym, uint32_t scale_bits)
+static inline void Rans32DecAdvanceSymbol(Rans32State* r, uint16_t** pptr, Rans32DecSymbol const* sym, uint32_t scale_bits)
 {
     Rans32DecAdvance(r, pptr, sym->start, sym->freq, scale_bits);
 }
@@ -304,17 +285,13 @@ static inline void Rans32DecAdvanceSymbolStep(Rans32State* r, Rans32DecSymbol co
 }
 
 // Renormalize.
-static inline void Rans32DecRenorm(Rans32State* r, uint8_t** pptr)
+static inline void Rans32DecRenorm(Rans32State* r, uint16_t** pptr)
 {
-    // renormalize
     uint32_t x = *r;
     if (x < RANS32_L) {
-        uint8_t* ptr = *pptr;
-        do x = (x << 8) | *ptr++; while (x < RANS32_L);
-        *pptr = ptr;
+        *r = (x << 16) | **pptr;
+        *pptr += 1;
     }
-
-    *r = x;
 }
 
-#endif // Rans32_DIRECT_HEADER
+#pragma once

@@ -1,6 +1,5 @@
 // Just some platform utilities.
-#ifndef PLATFORM_H_INCLUDED
-#define PLATFORM_H_INCLUDED
+#pragma once
 
 // x86 intrinsics (__rdtsc etc.)
 
@@ -59,6 +58,3 @@ static inline double timer()
 #error Unknown platform!
 
 #endif
-
-#endif // PLATFORM_H_INCLUDED
-
