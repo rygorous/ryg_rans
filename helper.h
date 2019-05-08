@@ -22,7 +22,7 @@ void read_file(const std::string& filename, std::vector<T>* tokens ){
 
 		// reserve size of tokens
 		if (!tokens){
-			throw std::runtime_error("Passed empty vector to read file into");
+			throw std::runtime_error("Cannot read file into nonexistent vector");
 		}
 
 		if (length % sizeof(T)){
