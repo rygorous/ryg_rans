@@ -5,42 +5,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <assert.h>
+#include <vector>
 
 #include "rans_byte.h"
-
-static void panic(const char *fmt, ...)
-{
-    va_list arg;
-
-    va_start(arg, fmt);
-    fputs("Error: ", stderr);
-    vfprintf(stderr, fmt, arg);
-    va_end(arg);
-    fputs("\n", stderr);
-
-    exit(1);
-}
-
-static uint8_t* read_file(char const* filename, size_t* out_size)
-{
-    FILE* f = fopen(filename, "rb");
-    if (!f)
-        panic("file not found: %s\n", filename);
-
-    fseek(f, 0, SEEK_END);
-    size_t size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    uint8_t* buf = new uint8_t[size];
-    if (fread(buf, size, 1, f) != 1)
-        panic("read failed\n");
-
-    fclose(f);
-    if (out_size)
-        *out_size = size;
-
-    return buf;
-}
+#include "helper.h"
 
 // ---- Stats
 
@@ -270,8 +238,10 @@ static inline uint32_t RansDecGetAlias(RansState* r, SymbolStats* const syms, ui
 
 int main()
 {
-    size_t in_size;
-    uint8_t* in_bytes = read_file("book1", &in_size);
+    std::vector<uint8_t> tokens;
+    read_file("book1", &tokens);
+    uint8_t* in_bytes = tokens.data();
+    size_t in_size = tokens.size();
 
     static const uint32_t prob_bits = 16;
     static const uint32_t prob_scale = 1 << prob_bits;
