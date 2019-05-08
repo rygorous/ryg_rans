@@ -1,5 +1,7 @@
 #include "helper.h"
 
+#include <stdarg.h>
+
 void panic(const char *fmt, ...)
 {
     va_list arg;

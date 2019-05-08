@@ -11,7 +11,8 @@
 
 #include "rans32.h"
 #include "helper.h"
-//#include "SymbolStats.h"
+#include "SymbolStats.h"
+
 // This is just the sample program. All the meat is in rans_byte.h.
 
 using source_t = uint8_t;

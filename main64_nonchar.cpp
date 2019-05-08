@@ -11,10 +11,10 @@
 
 #include "rans64.h"
 #include "helper.h"
-//#include "SymbolStats.h"
+#include "SymbolStats.h"
 // This is just the sample program. All the meat is in rans_byte.h.
 
-using source_t = int8_t;
+using source_t = uint16_t;
 
 int main(int argc, char* argv[])
 {
@@ -131,7 +131,7 @@ int main(int argc, char* argv[])
 
     // ---- interleaved rANS encode/decode. This is the kind of thing you might do to optimize critical paths.
 
-/*    memset(dec_bytes.data(), 0xcc,tokens.size()*sizeof(source_t));
+    memset(dec_bytes.data(), 0xcc,tokens.size()*sizeof(source_t));
 
     // try interleaved rANS encode
     printf("\ninterleaved rANS encode:\n");
@@ -213,7 +213,7 @@ int main(int argc, char* argv[])
     if (memcmp(tokens.data(), dec_bytes.data(), tokens.size()*sizeof(source_t)) == 0)
         printf("decode ok!\n");
     else
-        printf("ERROR: bad decoder!\n");*/
+        printf("ERROR: bad decoder!\n");
 
     delete[] out_buf;
     return 0;
