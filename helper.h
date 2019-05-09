@@ -8,6 +8,14 @@
 
 void panic(const char *fmt, ...);
 
+struct cmd_args
+{
+	std::string filename;
+	uint prob_bits;
+};
+
+void read_args(int argc, char** argv, cmd_args& args);
+
 template <typename T>
 void read_file(const std::string& filename, std::vector<T>* tokens ){
 	std::ifstream is (filename, std::ios_base::binary|std::ios_base::in);

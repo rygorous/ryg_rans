@@ -1,6 +1,7 @@
 #include "helper.h"
 
-#include <stdarg.h>
+#include <cstdarg>
+#include <cstdlib>
 
 void panic(const char *fmt, ...)
 {
@@ -13,4 +14,15 @@ void panic(const char *fmt, ...)
     fputs("\n", stderr);
 
     exit(1);
+}
+
+void read_args(int argc, char** argv, cmd_args& args){
+
+    if (argc > 1)
+    {
+        args.filename = argv[1];
+        args.prob_bits = (argc>2) ? std::stoi(argv[2]):0;
+    }else{
+    	throw std::runtime_error("syntax main.exe <filename> [<probability_bits>]");
+    }
 }

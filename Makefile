@@ -3,7 +3,7 @@ LDFLAGS =  -fPIC
 LDLIBS = 
 
 # Includes
-INCLUDES := -I. 
+INCLUDES := -I. -Iinclude
 
 CXX = g++
 COMP = $(CXX) $(CXXFLAGS) $(INCLUDES) -o $@ -c $<
