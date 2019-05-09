@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
 
     std::vector<source_t> tokens;
     read_file(parameters.filename,&tokens);
-    std::cout << "Read symbols:" << std::endl;
+    std::cout << "Read symbols:" << tokens.size() << std::endl;
 
     SymbolStats<source_t> stats;
     stats.count_freqs(tokens);
@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
         run_summary["NonInterleaved"]["Encode"].push_back(bandwidth);
     }
     {
-    const int size = (int) ((out_end - rans_begin) * sizeof(uint32_t));
+    const int size = static_cast<int>((out_end - rans_begin) * sizeof(uint32_t));
     printf("rANS: %d bytes\n",  size);
     run_summary["NonInterleaved"]["Size"] = size;
     }
@@ -234,5 +234,6 @@ int main(int argc, char* argv[])
 
     std::ofstream f("summary.json");
     f << std::setw(4) << run_summary << std::endl;
+    f.close();
     return 0;
 }

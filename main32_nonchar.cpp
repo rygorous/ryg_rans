@@ -1,44 +1,42 @@
 #include "platform.h"
-#include <stdio.h>
-#include <stdarg.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-#include <assert.h>
+#include <cstdio>
+#include <cstring>
 #include <string>
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 #include <cmath>
+
+
+#include <nlohmann/json.hpp>
 
 #include "rans32.h"
 #include "helper.h"
 #include "SymbolStats.h"
 
 // This is just the sample program. All the meat is in rans_byte.h.
-
+using json = nlohmann::json;
 using source_t = uint8_t;
+static const uint PROB_BITS = 14;
 
 int main(int argc, char* argv[])
 {
-    std::string filename;
-    if (argc > 1)
-    {
-        filename = argv[1];
-    }else{
-    	throw "no filename provided";
-    }
+	json run_summary;
 
-    printf("Compressing file: %s\n", filename.c_str());
+	cmd_args parameters;
+	read_args(argc, argv,parameters);
+    static const uint32_t prob_bits = (parameters.prob_bits >0) ? parameters.prob_bits : PROB_BITS;
+    static const uint32_t prob_scale = 1 << prob_bits;
+
+    std::cout << "Filename: " << parameters.filename << std::endl;
+    std::cout << "Probability Bits: " << prob_bits << std::endl;
+
+    run_summary["Filename"] = parameters.filename;
+    run_summary["ProbabilityBits"] = prob_bits;
 
     std::vector<source_t> tokens;
-    read_file(filename,&tokens);
-    std::cout << "read " << tokens.size() << " integers." << std::endl;
-//    for(auto token: tokens){
-//    	std::cout << token << std::endl;
-//    }
-
-//    static const uint32_t prob_bits = 14;
-    static const uint32_t prob_bits = 16;
-    static const uint32_t prob_scale = 1 << prob_bits;
+    read_file(parameters.filename,&tokens);
+    std::cout << "Read symbols:" << tokens.size() << std::endl;
 
     SymbolStats<source_t> stats;
     stats.count_freqs(tokens);
@@ -52,7 +50,9 @@ int main(int argc, char* argv[])
             cum2sym[i] = (s + stats.min);
 
     static const size_t out_max_size = 32<<20; // 32MB
-    std::vector<uint8_t> out_buf(out_max_size/sizeof(uint8_t));
+    static const size_t out_max_elems = out_max_size / sizeof(uint8_t);
+    std::vector<uint8_t>out_buf(out_max_elems);
+//    uint8_t* out_end = &out_buf.back();
     std::vector<source_t> dec_bytes(tokens.size(),0xcc);
 
     // try rANS encode
@@ -70,6 +70,9 @@ int main(int argc, char* argv[])
     printf("rANS encode:\n");
     auto enc_range = std::max(std::ceil(std::log2(stats.max-stats.min)),1.0);
     std::cout << "Symbol Range: " << enc_range  << "Bit" << std::endl;
+    run_summary["SymbolRange"] = enc_range;
+    run_summary["NonInterleaved"]["Encode"] = json::array();
+    run_summary["NonInterleaved"]["Decode"] = json::array();
     enc_range /= 8;
     for (int run=0; run < 5; run++) {
         double start_time = timer();
@@ -94,10 +97,15 @@ int main(int argc, char* argv[])
 
         uint64_t enc_clocks = __rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
-        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", enc_clocks, 1.0 * enc_clocks / tokens.size()*enc_range, 1.0 * (tokens.size()*enc_range)  / (enc_time * 1048576.0));
+        const double bandwidth = 1.0 * (tokens.size()*enc_range)  / (enc_time * 1048576.0);
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", enc_clocks, 1.0 * enc_clocks / tokens.size()*enc_range, bandwidth);
+        //run_summary["NonInterleaved"]["Encode"].push_back(bandwidth);
     }
-    printf("rANS: %d bytes\n", (int) (&out_buf.back() - rans_begin));
-
+    {
+    const int size = static_cast<int>(&out_buf.back() - rans_begin);
+    printf("rANS: %d bytes\n",  size);
+    run_summary["NonInterleaved"]["Size"] = size;
+    }
     // try rANS decode
     for (int run=0; run < 5; run++) {
         double start_time = timer();
@@ -169,11 +177,16 @@ int main(int argc, char* argv[])
 
         uint64_t enc_clocks = __rdtsc() - enc_start_time;
         double enc_time = timer() - start_time;
-        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", enc_clocks, 1.0 * enc_clocks / tokens.size()*enc_range, 1.0 * (tokens.size()*enc_range)  / (enc_time * 1048576.0));
+        const double bandwidth = 1.0 * (tokens.size()*enc_range)  / (enc_time * 1048576.0);
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", enc_clocks, 1.0 * enc_clocks / tokens.size()*enc_range, bandwidth);
+        run_summary["Interleaved"]["Encode"].push_back(bandwidth);
 
     }
-    printf("interleaved rANS: %d bytes\n", (int) (&out_buf.back() - rans_begin));
-
+    {
+    const int size = static_cast<int>(&out_buf.back() - rans_begin);
+    printf("interleaved rANS: %d bytes\n", size);
+    run_summary["Interleaved"]["Size"] = size;
+    }
     // try interleaved rANS decode
     for (int run=0; run < 5; run++) {
         double start_time = timer();
@@ -207,8 +220,9 @@ int main(int argc, char* argv[])
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
-        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", dec_clocks, 1.0 * dec_clocks / tokens.size()*enc_range, 1.0 * tokens.size()*enc_range / (dec_time * 1048576.0));
-
+        const double bandwidth = 1.0 * tokens.size()*enc_range / (dec_time * 1048576.0);
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", dec_clocks, 1.0 * dec_clocks / tokens.size()*enc_range, bandwidth);
+        run_summary["Interleaved"]["Decode"].push_back(bandwidth);
     }
 
     // check decode results
@@ -217,5 +231,8 @@ int main(int argc, char* argv[])
     else
         printf("ERROR: bad decoder!\n");
 
+    std::ofstream f("summary.json");
+    f << std::setw(4) << run_summary << std::endl;
+    f.close();
     return 0;
 }
