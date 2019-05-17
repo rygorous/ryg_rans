@@ -1,4 +1,4 @@
-	CXXFLAGS = -MD -MP -Wall -Wswitch -Werror -g -std=c++11 -march=native
+	CXXFLAGS = -MD -MP -Wall -Wswitch -Werror -g -std=c++17 -march=native
 LDFLAGS =  -fPIC
 LDLIBS = 
 
