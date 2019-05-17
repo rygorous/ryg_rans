@@ -69,7 +69,7 @@ constexpr bool needs64Bit(){
 //    argument instead of just storing it in some context struct.
 
 // --------------------------------------------------------------------------
-template<typename T, typename P>
+template<typename T, typename Stream_t>
 class Rans {
 public:
 	 Rans() = delete;
@@ -81,13 +81,13 @@ public:
 	 };
 
 	 // Renormalize the encoder. Internal function.
-	 static RansState<T> encRenorm(RansState<T> x, P** pptr, uint32_t freq, uint32_t scale_bits)
+	 static RansState<T> encRenorm(RansState<T> x, Stream_t** pptr, uint32_t freq, uint32_t scale_bits)
 	 {
-	     uint32_t x_max = ((lower_bound >> scale_bits) << stream_bits) * freq; // this turns into a shift.
+	     T x_max = ((lower_bound >> scale_bits) << stream_bits) * freq; // this turns into a shift.
 	     if (x >= x_max) {
-	         uint8_t* ptr = *pptr;
+	         Stream_t* ptr = *pptr;
 	         do {
-	             *--ptr = (uint8_t) (x & 0xff);
+	             *--ptr = (Stream_t) (x & 0xff);
 	             x >>= stream_bits;
 	         } while (x >= x_max);
 	         *pptr = ptr;
@@ -102,7 +102,7 @@ public:
 	 // NOTE: With rANS, you need to encode symbols in *reverse order*, i.e. from
 	 // beginning to end! Likewise, the output bytestream is written *backwards*:
 	 // ptr starts pointing at the end of the output buffer and keeps decrementing.
-	 static void encPut(RansState<T>* r, P** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
+	 static void encPut(RansState<T>* r, Stream_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 	 {
 	     // renormalize
 	     RansState<T> x = encRenorm(*r, pptr, freq, scale_bits);
@@ -112,26 +112,26 @@ public:
 	 };
 
 	 // Flushes the rANS encoder.
-	 static void encFlush(RansState<T>* r, P** pptr)
+	 static void encFlush(RansState<T>* r, Stream_t** pptr)
 	 {
-	     uint32_t x = *r;
-	     uint8_t* ptr = *pptr;
+	     T x = *r;
+	     Stream_t* ptr = *pptr;
 
 	     ptr -= 4;
-	     ptr[0] = (uint8_t) (x >> 0);
-	     ptr[1] = (uint8_t) (x >> 8);
-	     ptr[2] = (uint8_t) (x >> 16);
-	     ptr[3] = (uint8_t) (x >> 24);
+	     ptr[0] = (Stream_t) (x >> 0);
+	     ptr[1] = (Stream_t) (x >> 8);
+	     ptr[2] = (Stream_t) (x >> 16);
+	     ptr[3] = (Stream_t) (x >> 24);
 
 	     *pptr = ptr;
 	 };
 
 	 // Initializes a rANS decoder.
 	 // Unlike the encoder, the decoder works forwards as you'd expect.
-	 static void decInit(RansState<T>* r, P** pptr)
+	 static void decInit(RansState<T>* r, Stream_t** pptr)
 	 {
-	     uint32_t x;
-	     uint8_t* ptr = *pptr;
+	     T x;
+	     Stream_t* ptr = *pptr;
 
 	     x  = ptr[0] << 0;
 	     x |= ptr[1] << 8;
@@ -153,17 +153,17 @@ public:
 	 // Advances in the bit stream by "popping" a single symbol with range start
 	 // "start" and frequency "freq". All frequencies are assumed to sum to "1 << scale_bits",
 	 // and the resulting bytes get written to ptr (which is updated).
-	 static void decAdvance(RansState<T>* r, P** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
+	 static void decAdvance(RansState<T>* r, Stream_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 	 {
-	     uint32_t mask = (1u << scale_bits) - 1;
+	     T mask = (1u << scale_bits) - 1;
 
 	     // s, x = D(x)
-	     uint32_t x = *r;
+	     T x = *r;
 	     x = freq * (x >> scale_bits) + (x & mask) - start;
 
 	     // renormalize
 	     if (x < lower_bound) {
-	         uint8_t* ptr = *pptr;
+	         Stream_t* ptr = *pptr;
 	         do x = (x << stream_bits) | *ptr++; while (x < lower_bound);
 	         *pptr = ptr;
 	     }
@@ -234,7 +234,7 @@ public:
 	 		while (freq > (1u << shift))
 	 			shift++;
 
-	 		s->rcp_freq = (uint32_t) (((1ull << (shift + 31)) + freq-1) / freq);
+	 		s->rcp_freq = (T) (((1ull << (shift + 31)) + freq-1) / freq);
 	 		s->rcp_shift = shift - 1;
 
 	 		// With these values, 'q' is the correct quotient, so we
@@ -255,17 +255,17 @@ public:
 	 // multiplications instead of a divide.
 	 //
 	 // See Rans32EncSymbolInit for a description of how this works.
-	 static void encPutSymbol(RansState<T>* r, P** pptr, RansEncSymbol const* sym, uint32_t scale_bits)
+	 static void encPutSymbol(RansState<T>* r, Stream_t** pptr, RansEncSymbol const* sym, uint32_t scale_bits)
 	 {
 	 	RansAssert(sym->x_max != 0); // can't encode symbol with freq=0
 
 	 	// renormalize
-	 	uint32_t x = *r;
-	 	uint32_t x_max = sym->x_max;
+	 	T x = *r;
+	 	T x_max = sym->x_max;
 	 	if (x >= x_max) {
-	 		uint8_t* ptr = *pptr;
+	 		Stream_t* ptr = *pptr;
 	 		do {
-	 			*--ptr = (uint8_t) (x & 0xff);
+	 			*--ptr = (Stream_t) (x & 0xff);
 	 			x >>= stream_bits;
 	 		} while (x >= x_max);
 	 		*pptr = ptr;
@@ -275,12 +275,12 @@ public:
 	     		// NOTE: written this way so we get a 32-bit "multiply high" when
 	 	// available. If you're on a 64-bit platform with cheap multiplies
 	 	// (e.g. x64), just bake the +32 into rcp_shift.
-	 	uint32_t q = (uint32_t) (((uint64_t)x * sym->rcp_freq) >> 32) >> sym->rcp_shift;
+	 	T q = (T) (((uint64_t)x * sym->rcp_freq) >> 32) >> sym->rcp_shift;
 	 	*r = x + sym->bias + q * sym->cmpl_freq;
 	 };
 
 	 // Equivalent to Rans32DecAdvance that takes a symbol.
-	 static void decAdvanceSymbol(RansState<T>* r, P** pptr, RansDecSymbol const* sym, uint32_t scale_bits)
+	 static void decAdvanceSymbol(RansState<T>* r, Stream_t** pptr, RansDecSymbol const* sym, uint32_t scale_bits)
 	 {
 	 	decAdvance(r, pptr, sym->start, sym->freq, scale_bits);
 	 };
@@ -290,10 +290,10 @@ public:
 	 // No renormalization or output happens.
 	 static void decAdvanceStep(RansState<T>* r, uint32_t start, uint32_t freq, uint32_t scale_bits)
 	 {
-	 	uint32_t mask = (1u << scale_bits) - 1;
+	 	T mask = (1u << scale_bits) - 1;
 
 	 	// s, x = D(x)
-	 	uint32_t x = *r;
+	 	T x = *r;
 	 	*r = freq * (x >> scale_bits) + (x & mask) - start;
 	 };
 
@@ -304,12 +304,12 @@ public:
 	 };
 
 	 // Renormalize.
-	 static void decRenorm(RansState<T>* r, P** pptr)
+	 static void decRenorm(RansState<T>* r, Stream_t** pptr)
 	 {
 	     // renormalize
-	     uint32_t x = *r;
+	     T x = *r;
 	     if (x < lower_bound) {
-	         uint8_t* ptr = *pptr;
+	         Stream_t* ptr = *pptr;
 	         do x = (x << stream_bits) | *ptr++; while (x < lower_bound);
 	         *pptr = ptr;
 	     }
@@ -325,6 +325,6 @@ private:
 	 // fit in 32-bit uints: this permits some optimizations during encoding.
 	 inline static constexpr T lower_bound = needs64Bit<T>()? (1u << 31) :(1u << 23); // lower bound of our normalization interval
 
-	 inline static constexpr T stream_bits = sizeof(P)*8; // lower bound of our normalization interval
+	 inline static constexpr T stream_bits = sizeof(Stream_t)*8; // lower bound of our normalization interval
 
 };
