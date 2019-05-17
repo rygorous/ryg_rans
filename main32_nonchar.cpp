@@ -60,13 +60,13 @@ int main(int argc, char* argv[])
 
     // try rANS encode
     uint8_t *rans_begin;
-    std::vector<Rans32EncSymbol> esyms(stats.freqs.size());
-    std::vector<RansDecSymbol> dsyms(stats.freqs.size());
+    std::vector<Rans32EncSymbol> esyms;
+    std::vector<RansDecSymbol> dsyms;
 
     for (size_t i=0; i < stats.freqs.size(); i++) {
 //        std::cout << "esyns[" << i << "]: " << stats.freqs[i] << ", " << stats.cum_freqs[i] << ", "<< prob_bits <<  std::endl;
-        Rans32::encSymbolInit(&esyms[i], stats.cum_freqs[i], stats.freqs[i], prob_bits);
-        Rans32::decSymbolInit(&dsyms[i], stats.cum_freqs[i], stats.freqs[i]);
+        esyms.emplace_back(stats.cum_freqs[i], stats.freqs[i], prob_bits);
+        dsyms.emplace_back(stats.cum_freqs[i], stats.freqs[i]);
     }
 
     // ---- regular rANS encode/decode. Typical usage.
