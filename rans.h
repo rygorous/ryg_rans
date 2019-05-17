@@ -15,13 +15,6 @@
 #define RansAssert(x)
 #endif
 
-
-// L ('l' in the paper) is the lower bound of our normalization interval.
-// Between this and our byte-aligned emission, we use 31 (not 32!) bits.
-// This is done intentionally because exact reciprocals for 31-bit uints
-// fit in 32-bit uints: this permits some optimizations during encoding.
-#define RANS32_L (1u << 23)  // lower bound of our normalization interval
-
 // State for a rANS encoder. Yep, that's all there is to it.
 template<typename T>
 using RansState = T;
@@ -43,7 +36,10 @@ typedef struct {
 	uint16_t freq;      // Symbol frequency.
 } RansDecSymbol;
 
-
+template<typename T>
+constexpr bool needs64Bit(){
+	 return sizeof(T)>4;
+}
 
 // READ ME FIRST:
 //
@@ -81,13 +77,13 @@ public:
 	 // Initialize a rANS encoder.
 	 static void encInit(RansState<T>* r)
 	 {
-	     *r = RANS32_L;
+	     *r = lower_bound;
 	 };
 
 	 // Renormalize the encoder. Internal function.
 	 static RansState<T> encRenorm(RansState<T> x, P** pptr, uint32_t freq, uint32_t scale_bits)
 	 {
-	     uint32_t x_max = ((RANS32_L >> scale_bits) << 8) * freq; // this turns into a shift.
+	     uint32_t x_max = ((lower_bound >> scale_bits) << 8) * freq; // this turns into a shift.
 	     if (x >= x_max) {
 	         uint8_t* ptr = *pptr;
 	         do {
@@ -166,9 +162,9 @@ public:
 	     x = freq * (x >> scale_bits) + (x & mask) - start;
 
 	     // renormalize
-	     if (x < RANS32_L) {
+	     if (x < lower_bound) {
 	         uint8_t* ptr = *pptr;
-	         do x = (x << 8) | *ptr++; while (x < RANS32_L);
+	         do x = (x << 8) | *ptr++; while (x < lower_bound);
 	         *pptr = ptr;
 	     }
 
@@ -199,7 +195,7 @@ public:
 	 	// set up our parameters such that the original encoder and
 	 	// the fast encoder agree.
 
-	 	s->x_max = ((RANS32_L >> scale_bits) << 8) * freq;
+	 	s->x_max = ((lower_bound >> scale_bits) << 8) * freq;
 	 	s->cmpl_freq = (uint16_t) ((1 << scale_bits) - freq);
 	 	if (freq < 2) {
 	 		// freq=0 symbols are never valid to encode, so it doesn't matter what
@@ -312,14 +308,21 @@ public:
 	 {
 	     // renormalize
 	     uint32_t x = *r;
-	     if (x < RANS32_L) {
+	     if (x < lower_bound) {
 	         uint8_t* ptr = *pptr;
-	         do x = (x << 8) | *ptr++; while (x < RANS32_L);
+	         do x = (x << 8) | *ptr++; while (x < lower_bound);
 	         *pptr = ptr;
 	     }
 
 	     *r = x;
 	 }
 
-};
+private:
 
+	 // L ('l' in the paper) is the lower bound of our normalization interval.
+	 // Between this and our byte-aligned emission, we use 31 (not 32!) bits.
+	 // This is done intentionally because exact reciprocals for 31-bit uints
+	 // fit in 32-bit uints: this permits some optimizations during encoding.
+	 inline static constexpr T lower_bound = needs64Bit<T>()? (1u << 31) :(1u << 23); // lower bound of our normalization interval
+
+};
