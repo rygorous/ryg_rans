@@ -18,6 +18,7 @@
 using json = nlohmann::json;
 using source_t = uint8_t;
 static const uint PROB_BITS = 14;
+using Rans32 = Rans<uint32_t,uint8_t>;
 
 int main(int argc, char* argv[])
 {
@@ -62,8 +63,8 @@ int main(int argc, char* argv[])
 
     for (size_t i=0; i < stats.freqs.size(); i++) {
 //        std::cout << "esyns[" << i << "]: " << stats.freqs[i] << ", " << stats.cum_freqs[i] << ", "<< prob_bits <<  std::endl;
-        RansEncSymbolInit(&esyms[i], stats.cum_freqs[i], stats.freqs[i], prob_bits);
-        RansDecSymbolInit(&dsyms[i], stats.cum_freqs[i], stats.freqs[i]);
+        Rans32::encSymbolInit(&esyms[i], stats.cum_freqs[i], stats.freqs[i], prob_bits);
+        Rans32::decSymbolInit(&dsyms[i], stats.cum_freqs[i], stats.freqs[i]);
     }
 
     // ---- regular rANS encode/decode. Typical usage.
@@ -80,7 +81,7 @@ int main(int argc, char* argv[])
 
         [&](){
         RansState<uint32_t> rans;
-        RansEncInit(&rans);
+        Rans32::encInit(&rans);
 
         uint8_t* ptr = &out_buf.back(); // *end* of output buffer
         for (size_t i=tokens.size(); i > 0; i--) { // NB: working in reverse!
@@ -88,10 +89,10 @@ int main(int argc, char* argv[])
             size_t normalized = s - stats.min;
 
 //            std::cout << "s: " << s << ", esyns[" << normalized << "]: " << esyms[normalized].freq << std::endl;
-//            RansEncPut(&rans, &ptr, stats.cum_freqs[normalized], stats.freqs[normalized], prob_bits);
-            RansEncPutSymbol(&rans, &ptr, &esyms[normalized], prob_bits);
+//            Rans32::encPut(&rans, &ptr, stats.cum_freqs[normalized], stats.freqs[normalized], prob_bits);
+            Rans32::encPutSymbol(&rans, &ptr, &esyms[normalized], prob_bits);
         }
-        RansEncFlush(&rans, &ptr);
+        Rans32::encFlush(&rans, &ptr);
         rans_begin = ptr;
         }();
 
@@ -114,14 +115,14 @@ int main(int argc, char* argv[])
         [&](){
         RansState<uint32_t> rans;
         uint8_t* ptr = rans_begin;
-        RansDecInit(&rans, &ptr);
+        Rans32::decInit(&rans, &ptr);
 
         for (size_t i=0; i < tokens.size(); i++) {
-            source_t s = cum2sym[RansDecGet(&rans, prob_bits)];
+            source_t s = cum2sym[Rans32::decGet(&rans, prob_bits)];
             dec_bytes[i] = s;
             const size_t normalized = s - stats.min;
 //            std::cout << "s: " << s << ", dsyms[" << normalized << "]: " << dsyms[normalized].freq << std::endl;
-            RansDecAdvanceSymbol(&rans, &ptr, &dsyms[normalized], prob_bits);
+            Rans32::decAdvanceSymbol(&rans, &ptr, &dsyms[normalized], prob_bits);
         }
         }();
 
@@ -147,8 +148,8 @@ int main(int argc, char* argv[])
         uint64_t enc_start_time = __rdtsc();
 
         RansState<uint32_t> rans0, rans1;
-        RansEncInit(&rans0);
-        RansEncInit(&rans1);
+        Rans32::encInit(&rans0);
+        Rans32::encInit(&rans1);
 
         uint8_t* ptr = &out_buf.back();
 
@@ -156,8 +157,8 @@ int main(int argc, char* argv[])
         if (tokens.size() & 1) {
             const int s = tokens.back();
             const size_t normalized = s - stats.min;
-//            RansEncPutSymbol(&rans0, &ptr, &esyms[normalized], prob_bits);
-            RansEncPut(&rans0, &ptr, stats.cum_freqs[normalized], stats.freqs[normalized], prob_bits);
+//            Rans32::encPutSymbol(&rans0, &ptr, &esyms[normalized], prob_bits);
+            Rans32::encPut(&rans0, &ptr, stats.cum_freqs[normalized], stats.freqs[normalized], prob_bits);
         }
 
         for (size_t i=(tokens.size() & ~1); i > 0; i -= 2) { // NB: working in reverse!
@@ -166,13 +167,13 @@ int main(int argc, char* argv[])
             const size_t normalized1 = s1 - stats.min;
             const size_t normalized0 = s0 - stats.min;
 
-            RansEncPutSymbol(&rans1, &ptr, &esyms[normalized1],prob_bits);
-            RansEncPutSymbol(&rans0, &ptr, &esyms[normalized0],prob_bits);
-//            RansEncPut(&rans1, &ptr, stats.cum_freqs[normalized1], stats.freqs[normalized1], prob_bits);
-//            RansEncPut(&rans0, &ptr, stats.cum_freqs[normalized0], stats.freqs[normalized0], prob_bits);
+            Rans32::encPutSymbol(&rans1, &ptr, &esyms[normalized1],prob_bits);
+            Rans32::encPutSymbol(&rans0, &ptr, &esyms[normalized0],prob_bits);
+//            Rans32::encPut(&rans1, &ptr, stats.cum_freqs[normalized1], stats.freqs[normalized1], prob_bits);
+//            Rans32::encPut(&rans0, &ptr, stats.cum_freqs[normalized0], stats.freqs[normalized0], prob_bits);
         }
-        RansEncFlush(&rans1, &ptr);
-        RansEncFlush(&rans0, &ptr);
+        Rans32::encFlush(&rans1, &ptr);
+        Rans32::encFlush(&rans0, &ptr);
         rans_begin = ptr;
 
         uint64_t enc_clocks = __rdtsc() - enc_start_time;
@@ -194,28 +195,28 @@ int main(int argc, char* argv[])
 
         RansState<uint32_t> rans0, rans1;
         uint8_t* ptr = rans_begin;
-        RansDecInit(&rans0, &ptr);
-        RansDecInit(&rans1, &ptr);
+        Rans32::decInit(&rans0, &ptr);
+        Rans32::decInit(&rans1, &ptr);
 
         for (size_t i=0; i < (tokens.size() & ~1); i += 2) {
-            const uint32_t s0 = cum2sym[RansDecGet(&rans0, prob_bits)];
-            const uint32_t s1 = cum2sym[RansDecGet(&rans1, prob_bits)];
+            const uint32_t s0 = cum2sym[Rans32::decGet(&rans0, prob_bits)];
+            const uint32_t s1 = cum2sym[Rans32::decGet(&rans1, prob_bits)];
             dec_bytes[i+0] = s0;
             dec_bytes[i+1] = s1;
             const size_t normalized0 = s0 - stats.min;
             const size_t normalized1 = s1 - stats.min;
-            RansDecAdvanceSymbolStep(&rans0, &dsyms[normalized0], prob_bits);
-            RansDecAdvanceSymbolStep(&rans1, &dsyms[normalized1], prob_bits);
-            RansDecRenorm(&rans0, &ptr);
-            RansDecRenorm(&rans1, &ptr);
+            Rans32::decAdvanceSymbolStep(&rans0, &dsyms[normalized0], prob_bits);
+            Rans32::decAdvanceSymbolStep(&rans1, &dsyms[normalized1], prob_bits);
+            Rans32::decRenorm(&rans0, &ptr);
+            Rans32::decRenorm(&rans1, &ptr);
         }
 
         // last byte, if number of bytes was odd
         if (tokens.size() & 1) {
-        	const uint32_t s0 = cum2sym[RansDecGet(&rans0, prob_bits)];
+        	const uint32_t s0 = cum2sym[Rans32::decGet(&rans0, prob_bits)];
             dec_bytes[tokens.size() - 1] = s0;
             const size_t normalized = s0 - stats.min;
-            RansDecAdvanceSymbol(&rans0, &ptr, &dsyms[normalized], prob_bits);
+            Rans32::decAdvanceSymbol(&rans0, &ptr, &dsyms[normalized], prob_bits);
         }
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
