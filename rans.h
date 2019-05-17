@@ -22,19 +22,22 @@ using RansState = T;
 // Encoder symbol description
 // This (admittedly odd) selection of parameters was chosen to make
 // RansEncPutSymbol as cheap as possible.
-typedef struct {
-	uint32_t x_max;     // (Exclusive) upper bound of pre-normalization interval
+template <typename T>
+struct RansEncSymbol
+{
+	T x_max;     // (Exclusive) upper bound of pre-normalization interval
 	uint32_t rcp_freq;  // Fixed-point reciprocal frequency
 	uint32_t bias;      // Bias
-	uint16_t cmpl_freq; // Complement of frequency: (1 << scale_bits) - freq
-	uint16_t rcp_shift; // Reciprocal shift
-} RansEncSymbol;
+	uint32_t cmpl_freq; // Complement of frequency: (1 << scale_bits) - freq
+	uint32_t rcp_shift; // Reciprocal shift
+};
 
 // Decoder symbols are straightforward.
-typedef struct {
-	uint16_t start;     // Start of range.
-	uint16_t freq;      // Symbol frequency.
-} RansDecSymbol;
+struct RansDecSymbol
+{
+	uint32_t start;     // Start of range.
+	uint32_t freq;      // Symbol frequency.
+};
 
 template<typename T>
 constexpr bool needs64Bit(){
@@ -172,7 +175,7 @@ public:
 	 };
 
 	 // Initializes an encoder symbol to start "start" and frequency "freq"
-	 static void encSymbolInit(RansEncSymbol* s, uint32_t start, uint32_t freq, uint32_t scale_bits)
+	 static void encSymbolInit(RansEncSymbol<T>* s, uint32_t start, uint32_t freq, uint32_t scale_bits)
 	 {
 	 	RansAssert(scale_bits <= 16);
 	 	RansAssert(start <= (1u << scale_bits));
@@ -255,7 +258,7 @@ public:
 	 // multiplications instead of a divide.
 	 //
 	 // See Rans32EncSymbolInit for a description of how this works.
-	 static void encPutSymbol(RansState<T>* r, Stream_t** pptr, RansEncSymbol const* sym, uint32_t scale_bits)
+	 static void encPutSymbol(RansState<T>* r, Stream_t** pptr, RansEncSymbol<T> const* sym, uint32_t scale_bits)
 	 {
 	 	RansAssert(sym->x_max != 0); // can't encode symbol with freq=0
 
