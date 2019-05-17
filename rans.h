@@ -83,12 +83,12 @@ public:
 	 // Renormalize the encoder. Internal function.
 	 static RansState<T> encRenorm(RansState<T> x, P** pptr, uint32_t freq, uint32_t scale_bits)
 	 {
-	     uint32_t x_max = ((lower_bound >> scale_bits) << 8) * freq; // this turns into a shift.
+	     uint32_t x_max = ((lower_bound >> scale_bits) << stream_bits) * freq; // this turns into a shift.
 	     if (x >= x_max) {
 	         uint8_t* ptr = *pptr;
 	         do {
 	             *--ptr = (uint8_t) (x & 0xff);
-	             x >>= 8;
+	             x >>= stream_bits;
 	         } while (x >= x_max);
 	         *pptr = ptr;
 	     }
@@ -164,7 +164,7 @@ public:
 	     // renormalize
 	     if (x < lower_bound) {
 	         uint8_t* ptr = *pptr;
-	         do x = (x << 8) | *ptr++; while (x < lower_bound);
+	         do x = (x << stream_bits) | *ptr++; while (x < lower_bound);
 	         *pptr = ptr;
 	     }
 
@@ -195,7 +195,7 @@ public:
 	 	// set up our parameters such that the original encoder and
 	 	// the fast encoder agree.
 
-	 	s->x_max = ((lower_bound >> scale_bits) << 8) * freq;
+	 	s->x_max = ((lower_bound >> scale_bits) << stream_bits) * freq;
 	 	s->cmpl_freq = (uint16_t) ((1 << scale_bits) - freq);
 	 	if (freq < 2) {
 	 		// freq=0 symbols are never valid to encode, so it doesn't matter what
@@ -266,7 +266,7 @@ public:
 	 		uint8_t* ptr = *pptr;
 	 		do {
 	 			*--ptr = (uint8_t) (x & 0xff);
-	 			x >>= 8;
+	 			x >>= stream_bits;
 	 		} while (x >= x_max);
 	 		*pptr = ptr;
 	 	}
@@ -310,7 +310,7 @@ public:
 	     uint32_t x = *r;
 	     if (x < lower_bound) {
 	         uint8_t* ptr = *pptr;
-	         do x = (x << 8) | *ptr++; while (x < lower_bound);
+	         do x = (x << stream_bits) | *ptr++; while (x < lower_bound);
 	         *pptr = ptr;
 	     }
 
@@ -324,5 +324,7 @@ private:
 	 // This is done intentionally because exact reciprocals for 31-bit uints
 	 // fit in 32-bit uints: this permits some optimizations during encoding.
 	 inline static constexpr T lower_bound = needs64Bit<T>()? (1u << 31) :(1u << 23); // lower bound of our normalization interval
+
+	 inline static constexpr T stream_bits = sizeof(P)*8; // lower bound of our normalization interval
 
 };
