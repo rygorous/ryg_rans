@@ -180,21 +180,6 @@ public:
 		*r = lower_bound;
 	};
 
-	// Renormalize the encoder. Internal function.
-	static RansState<T> encRenorm(RansState<T> x, Stream_t** pptr, uint32_t freq, uint32_t scale_bits)
-		{
-		T x_max = ((lower_bound >> scale_bits) << stream_bits) * freq; // this turns into a shift.
-		if (x >= x_max) {
-			Stream_t* ptr = *pptr;
-			do {
-				*--ptr = (Stream_t) (x & 0xff);
-				x >>= stream_bits;
-			} while (x >= x_max);
-			*pptr = ptr;
-		}
-		return x;
-		};
-
 	// Encodes a single symbol with range start "start" and frequency "freq".
 	// All frequencies are assumed to sum to "1 << scale_bits", and the
 	// resulting bytes get written to ptr (which is updated).
@@ -262,11 +247,7 @@ public:
 		x = freq * (x >> scale_bits) + (x & mask) - start;
 
 		// renormalize
-		if (x < lower_bound) {
-			Stream_t* ptr = *pptr;
-			do x = (x << stream_bits) | *ptr++; while (x < lower_bound);
-			*pptr = ptr;
-		}
+		decRenorm(&x,pptr);
 
 		*r = x;
 	};
@@ -280,16 +261,7 @@ public:
 		RansAssert(sym->freq != 0); // can't encode symbol with freq=0
 
 		// renormalize
-		T x = *r;
-		T x_max = ((lower_bound >> scale_bits) << stream_bits) * sym->freq;
-		if (x >= x_max) {
-			Stream_t* ptr = *pptr;
-			do {
-				*--ptr = (Stream_t) (x & 0xff);
-				x >>= stream_bits;
-			} while (x >= x_max);
-			*pptr = ptr;
-		}
+		T x = encRenorm(*r,pptr,sym->freq,scale_bits);
 
 		// x = C(s,x)
 		// NOTE: written this way so we get a 32-bit "multiply high" when
@@ -324,7 +296,7 @@ public:
 	};
 
 	// Renormalize.
-	static void decRenorm(RansState<T>* r, Stream_t** pptr)
+	static inline void decRenorm(RansState<T>* r, Stream_t** pptr)
 	{
 		// renormalize
 		T x = *r;
@@ -338,6 +310,21 @@ public:
 	}
 
 private:
+
+	// Renormalize the encoder.
+	static inline RansState<T> encRenorm(RansState<T> x, Stream_t** pptr, uint32_t freq, uint32_t scale_bits)
+	{
+		T x_max = ((lower_bound >> scale_bits) << stream_bits) * freq; // this turns into a shift.
+		if (x >= x_max) {
+			Stream_t* ptr = *pptr;
+			do {
+				*--ptr = (Stream_t) (x & 0xff);
+				x >>= stream_bits;
+			} while (x >= x_max);
+			*pptr = ptr;
+		}
+		return x;
+	};
 
 	// L ('l' in the paper) is the lower bound of our normalization interval.
 	// Between this and our byte-aligned emission, we use 31 (not 32!) bits.
