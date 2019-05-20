@@ -13,7 +13,7 @@ COMPLINK = $(CXX) $(CXXFLAGS) $(INCLUDES) $(LDFLAGS) -o $@ $< $(LDLIBS)
 
 OBJS := helper.o main_alias.o main_simd.o main.o main64.o main_nonchar.o main64_nonchar.o main32_nonchar.o main32_nonchar_direct.o
 DEPS := $(subst .o,.d,$(OBJS))
-TARGET := main_alias.exe main_simd.exe main.exe main64.exe main32_nonchar.exe main64_nonchar.exe main32_nonchar_direct.exe
+TARGET := main_alias.exe main_simd.exe main.exe main64.exe main32_nonchar.exe main64_nonchar.exe
 
 .SUFFIXES:	.cpp .o	
 
@@ -54,9 +54,6 @@ main32_nonchar.exe: main32_nonchar.o helper.o
 main64_nonchar.exe: main64_nonchar.o helper.o
 	$(LINK)
 	
-main32_nonchar_direct.exe: main32_nonchar_direct.o helper.o
-	$(LINK)
-		
 
 #$(TARGET): $(OBJS) Makefile
 #	$(LINK)
