@@ -202,11 +202,19 @@ public:
 		T x = *r;
 		Stream_t* ptr = *pptr;
 
-		ptr -= 4;
-		ptr[0] = (Stream_t) (x >> 0);
-		ptr[1] = (Stream_t) (x >> 8);
-		ptr[2] = (Stream_t) (x >> 16);
-		ptr[3] = (Stream_t) (x >> 24);
+		if constexpr (needs64Bit<T>()){
+		    ptr -= 2;
+		    pptr[0] = static_cast<Stream_t> (x >> 0);
+		    pptr[1] = static_cast<Stream_t> (x >> 32);
+		}
+		else
+		{
+			ptr -= 4;
+			ptr[0] = static_cast<Stream_t> (x >> 0);
+			ptr[1] = static_cast<Stream_t> (x >> 8);
+			ptr[2] = static_cast<Stream_t> (x >> 16);
+			ptr[3] = static_cast<Stream_t> (x >> 24);
+		}
 
 		*pptr = ptr;
 	};
@@ -218,11 +226,19 @@ public:
 		T x;
 		Stream_t* ptr = *pptr;
 
-		x  = ptr[0] << 0;
-		x |= ptr[1] << 8;
-		x |= ptr[2] << 16;
-		x |= ptr[3] << 24;
-		ptr += 4;
+		if constexpr (needs64Bit<T>()){
+		    x  = static_cast<T> ((*pptr)[0]) << 0;
+		    x |= static_cast<T> ((*pptr)[1]) << 32;
+		    *pptr += 2;
+		}
+		else
+		{
+			x  = ptr[0] << 0;
+			x |= ptr[1] << 8;
+			x |= ptr[2] << 16;
+			x |= ptr[3] << 24;
+			ptr += 4;
+		}
 
 		*pptr = ptr;
 		*r = x;
@@ -240,7 +256,7 @@ public:
 	// and the resulting bytes get written to ptr (which is updated).
 	static void decAdvance(RansState<T>* r, Stream_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 	{
-		T mask = (1u << scale_bits) - 1;
+		T mask = (1ull << scale_bits) - 1;
 
 		// s, x = D(x)
 		T x = *r;
@@ -339,7 +355,7 @@ private:
 			}else{
 				Stream_t* ptr = *pptr;
 				do {
-					*--ptr = (Stream_t) (x & 0xff);
+					*--ptr = static_cast<Stream_t> (x & 0xff);
 					x >>= stream_bits;
 				} while (x >= x_max);
 				*pptr = ptr;
