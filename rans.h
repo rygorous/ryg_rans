@@ -264,10 +264,19 @@ public:
 		T x = encRenorm(*r,pptr,sym->freq,scale_bits);
 
 		// x = C(s,x)
-		// NOTE: written this way so we get a 32-bit "multiply high" when
-		// available. If you're on a 64-bit platform with cheap multiplies
-		// (e.g. x64), just bake the +32 into rcp_shift.
-		T q = (T) (((uint64_t)x * sym->rcp_freq) >> 32) >> sym->rcp_shift;
+		T q;
+
+		if constexpr (needs64Bit<T>()){
+			// This code needs support for 64-bit long multiplies with 128-bit result
+			// (or more precisely, the top 64 bits of a 128-bit result).
+			q = static_cast<T>((static_cast<unsigned __int128>(x) * sym->rcp_freq) >> 64);
+		}
+		else
+		{
+			q = static_cast<T>((static_cast<uint64_t>(x) * sym->rcp_freq) >> 32);
+		}
+		q = q >> sym->rcp_shift;
+
 		*r = x + sym->bias + q * sym->cmpl_freq;
 	};
 
@@ -312,7 +321,6 @@ public:
 				*pptr = ptr;
 			}
 		}
-
 		*r = x;
 	}
 
