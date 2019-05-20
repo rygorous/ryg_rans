@@ -301,9 +301,16 @@ public:
 		// renormalize
 		T x = *r;
 		if (x < lower_bound) {
-			Stream_t* ptr = *pptr;
-			do x = (x << stream_bits) | *ptr++; while (x < lower_bound);
-			*pptr = ptr;
+			if constexpr(needs64Bit<T>())
+			{
+				x = (x << stream_bits) | **pptr;
+				*pptr += 1;
+				Rans64Assert(x >= lower_bound);
+			}else{
+				Stream_t* ptr = *pptr;
+				do x = (x << stream_bits) | *ptr++; while (x < lower_bound);
+				*pptr = ptr;
+			}
 		}
 
 		*r = x;
@@ -316,12 +323,19 @@ private:
 	{
 		T x_max = ((lower_bound >> scale_bits) << stream_bits) * freq; // this turns into a shift.
 		if (x >= x_max) {
-			Stream_t* ptr = *pptr;
-			do {
-				*--ptr = (Stream_t) (x & 0xff);
+			if constexpr(needs64Bit<T>())
+			{
+				*pptr -= 1;
+				**pptr = static_cast<Stream_t>(x);
 				x >>= stream_bits;
-			} while (x >= x_max);
-			*pptr = ptr;
+			}else{
+				Stream_t* ptr = *pptr;
+				do {
+					*--ptr = (Stream_t) (x & 0xff);
+					x >>= stream_bits;
+				} while (x >= x_max);
+				*pptr = ptr;
+			}
 		}
 		return x;
 	};
