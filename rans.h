@@ -19,6 +19,11 @@
 template<typename T>
 using RansState = T;
 
+template<typename T>
+constexpr bool needs64Bit(){
+	return sizeof(T)>4;
+}
+
 // Encoder symbol description
 // This (admittedly odd) selection of parameters was chosen to make
 // RansEncPutSymbol as cheap as possible.
@@ -27,7 +32,8 @@ struct RansEncSymbol
 {
 	RansEncSymbol(uint32_t start, uint32_t freq, uint32_t scale_bits)
 	{
-		RansAssert(scale_bits <= 16);
+		//TODO(lettrich): a check should be definitely done here.
+		//		RansAssert(scale_bits <= 16);
 		RansAssert(start <= (1u << scale_bits));
 		RansAssert(freq <= (1u << scale_bits) - start);
 
@@ -49,7 +55,7 @@ struct RansEncSymbol
 		// the fast encoder agree.
 
 		this->freq = freq;
-		this->cmpl_freq = (uint16_t) ((1 << scale_bits) - freq);
+		this->cmpl_freq = static_cast<T>((1 << scale_bits) - freq);
 		if (freq < 2) {
 			// freq=0 symbols are never valid to encode, so it doesn't matter what
 			// we set our values to.
@@ -77,7 +83,7 @@ struct RansEncSymbol
 			//
 			// so we have start = bias + 1 - M, or equivalently
 			//   bias = start + M - 1.
-			this->rcp_freq = ~0u;
+			this->rcp_freq = static_cast<T>(~0ul);
 			this->rcp_shift = 0;
 			this->bias = start + (1 << scale_bits) - 1;
 		} else {
@@ -87,7 +93,22 @@ struct RansEncSymbol
 			while (freq > (1u << shift))
 				shift++;
 
-			this->rcp_freq = (T) (((1ull << (shift + 31)) + freq-1) / freq);
+			if constexpr (needs64Bit<T>()){
+				uint64_t x0, x1, t0, t1;
+				// long divide ((uint128) (1 << (shift + 63)) + freq-1) / freq
+				// by splitting it into two 64:64 bit divides (this works because
+				// the dividend has a simple form.)
+				x0 = freq - 1;
+				x1 = 1ull << (shift + 31);
+
+				t1 = x1 / freq;
+				x0 += (x1 % freq) << 32;
+				t0 = x0 / freq;
+
+				this->rcp_freq = t0 + (t1 << 32);
+			}else{
+				this->rcp_freq = static_cast<uint32_t>(((1ull << (shift + 31)) + freq-1) / freq);
+			}
 			this->rcp_shift = shift - 1;
 
 			// With these values, 'q' is the correct quotient, so we
@@ -97,9 +118,8 @@ struct RansEncSymbol
 	};
 
 
-
-	T freq;     // (Exclusive) upper bound of pre-normalization interval
-	uint32_t rcp_freq;  // Fixed-point reciprocal frequency
+	T rcp_freq;  		// Fixed-point reciprocal frequency
+	uint32_t freq;     	// (Exclusive) upper bound of pre-normalization interval
 	uint32_t bias;      // Bias
 	uint32_t cmpl_freq; // Complement of frequency: (1 << scale_bits) - freq
 	uint32_t rcp_shift; // Reciprocal shift
@@ -111,18 +131,15 @@ struct RansDecSymbol
 	// Initialize a decoder symbol to start "start" and frequency "freq"
 	RansDecSymbol(uint32_t start, uint32_t freq):start(start), freq(freq)
 	{
-		RansAssert(start <= (1 << 16));
-		RansAssert(freq <= (1 << 16) - start);
+
+		//TODO(lettrich): a check should be definitely done here.
+		//		RansAssert(start <= (1 << 16));
+		//		RansAssert(freq <= (1 << 16) - start);
 	};
 
 	uint32_t start;     // Start of range.
 	uint32_t freq;      // Symbol frequency.
 };
-
-template<typename T>
-constexpr bool needs64Bit(){
-	return sizeof(T)>4;
-}
 
 // READ ME FIRST:
 //
@@ -165,7 +182,7 @@ public:
 
 	// Renormalize the encoder. Internal function.
 	static RansState<T> encRenorm(RansState<T> x, Stream_t** pptr, uint32_t freq, uint32_t scale_bits)
-			 {
+		{
 		T x_max = ((lower_bound >> scale_bits) << stream_bits) * freq; // this turns into a shift.
 		if (x >= x_max) {
 			Stream_t* ptr = *pptr;
@@ -176,7 +193,7 @@ public:
 			*pptr = ptr;
 		}
 		return x;
-			 };
+		};
 
 	// Encodes a single symbol with range start "start" and frequency "freq".
 	// All frequencies are assumed to sum to "1 << scale_bits", and the
