@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
         double enc_time = timer() - start_time;
         const double bandwidth = 1.0 * (tokens.size()*enc_range)  / (enc_time * 1048576.0);
         printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", enc_clocks, 1.0 * enc_clocks / tokens.size()*enc_range, bandwidth);
-        //run_summary["NonInterleaved"]["Encode"].push_back(bandwidth);
+        run_summary["NonInterleaved"]["Encode"].push_back(bandwidth);
     }
     {
     const int size = static_cast<int>(&out_buf.back() - rans_begin);
@@ -130,7 +130,9 @@ int main(int argc, char* argv[])
 
         uint64_t dec_clocks = __rdtsc() - dec_start_time;
         double dec_time = timer() - start_time;
-        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", dec_clocks, 1.0 * dec_clocks / tokens.size()*enc_range, 1.0 * tokens.size()*enc_range / (dec_time * 1048576.0));
+        const double bandwidth = 1.0 * tokens.size()*enc_range / (dec_time * 1048576.0);
+        printf("%" PRIu64" clocks, %.1f clocks/symbol (%5.1f MiB/s)\n", dec_clocks, 1.0 * dec_clocks / tokens.size()*enc_range, bandwidth);
+        run_summary["NonInterleaved"]["Decode"].push_back(bandwidth);
     }
 
     // check decode results
@@ -145,6 +147,9 @@ int main(int argc, char* argv[])
 
     // try interleaved rANS encode
     printf("\ninterleaved rANS encode:\n");
+    run_summary["Interleaved"]["Encode"] = json::array();
+    run_summary["Interleaved"]["Decode"] = json::array();
+
     for (int run=0; run < 5; run++) {
         double start_time = timer();
         uint64_t enc_start_time = __rdtsc();
@@ -159,8 +164,8 @@ int main(int argc, char* argv[])
         if (tokens.size() & 1) {
             const int s = tokens.back();
             const size_t normalized = s - stats.min;
-//            Rans32::encPutSymbol(&rans0, &ptr, &esyms[normalized], prob_bits);
-            Rans32::encPut(&rans0, &ptr, stats.cum_freqs[normalized], stats.freqs[normalized], prob_bits);
+            Rans32::encPutSymbol(&rans0, &ptr, &esyms[normalized], prob_bits);
+//            Rans32::encPut(&rans0, &ptr, stats.cum_freqs[normalized], stats.freqs[normalized], prob_bits);
         }
 
         for (size_t i=(tokens.size() & ~1); i > 0; i -= 2) { // NB: working in reverse!

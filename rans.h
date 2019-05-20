@@ -204,8 +204,8 @@ public:
 
 		if constexpr (needs64Bit<T>()){
 		    ptr -= 2;
-		    pptr[0] = static_cast<Stream_t> (x >> 0);
-		    pptr[1] = static_cast<Stream_t> (x >> 32);
+		    ptr[0] = static_cast<Stream_t> (x >> 0);
+		    ptr[1] = static_cast<Stream_t> (x >> 32);
 		}
 		else
 		{
@@ -227,9 +227,9 @@ public:
 		Stream_t* ptr = *pptr;
 
 		if constexpr (needs64Bit<T>()){
-		    x  = static_cast<T> ((*pptr)[0]) << 0;
-		    x |= static_cast<T> ((*pptr)[1]) << 32;
-		    *pptr += 2;
+		    x  = static_cast<T> (ptr[0]) << 0;
+		    x |= static_cast<T> (ptr[1]) << 32;
+		    ptr += 2;
 		}
 		else
 		{
@@ -330,7 +330,7 @@ public:
 			{
 				x = (x << stream_bits) | **pptr;
 				*pptr += 1;
-				Rans64Assert(x >= lower_bound);
+				RansAssert(x >= lower_bound);
 			}else{
 				Stream_t* ptr = *pptr;
 				do x = (x << stream_bits) | *ptr++; while (x < lower_bound);
