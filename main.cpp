@@ -262,6 +262,5 @@ int main()
 
     delete[] out_buf;
     delete[] dec_bytes;
-    delete[] in_bytes;
     return 0;
 }
