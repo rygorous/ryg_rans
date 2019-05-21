@@ -1,3 +1,4 @@
+#include <coder.h>
 #include "platform.h"
 #include <cstdio>
 #include <cstring>
@@ -10,7 +11,6 @@
 
 #include <nlohmann/json.hpp>
 
-#include "rans.h"
 #include "helper.h"
 #include "SymbolStats.h"
 
@@ -18,8 +18,8 @@
 using json = nlohmann::json;
 using source_t = uint8_t;
 static const uint PROB_BITS = 14;
-using Rans32 = Rans<uint32_t,uint8_t>;
-using Rans32EncSymbol = RansEncSymbol<uint32_t>;
+using Rans32 = rans::Coder<uint32_t,uint8_t>;
+using Rans32EncSymbol = rans::EncSymbol<uint32_t>;
 
 
 int main(int argc, char* argv[])
@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
     // try rANS encode
     uint8_t *rans_begin;
     std::vector<Rans32EncSymbol> esyms;
-    std::vector<RansDecSymbol> dsyms;
+    std::vector<rans::DecSymbol> dsyms;
 
     for (size_t i=0; i < stats.freqs.size(); i++) {
 //        std::cout << "esyns[" << i << "]: " << stats.freqs[i] << ", " << stats.cum_freqs[i] << ", "<< prob_bits <<  std::endl;
@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
         uint64_t enc_start_time = __rdtsc();
 
         [&](){
-        RansState<uint32_t> rans;
+        rans::State<uint32_t> rans;
         Rans32::encInit(&rans);
 
         uint8_t* ptr = &out_buf.back(); // *end* of output buffer
@@ -115,7 +115,7 @@ int main(int argc, char* argv[])
         uint64_t dec_start_time = __rdtsc();
 
         [&](){
-        RansState<uint32_t> rans;
+        rans::State<uint32_t> rans;
         uint8_t* ptr = rans_begin;
         Rans32::decInit(&rans, &ptr);
 
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
         double start_time = timer();
         uint64_t enc_start_time = __rdtsc();
 
-        RansState<uint32_t> rans0, rans1;
+        rans::State<uint32_t> rans0, rans1;
         Rans32::encInit(&rans0);
         Rans32::encInit(&rans1);
 
@@ -200,7 +200,7 @@ int main(int argc, char* argv[])
         double start_time = timer();
         uint64_t dec_start_time = __rdtsc();
 
-        RansState<uint32_t> rans0, rans1;
+        rans::State<uint32_t> rans0, rans1;
         uint8_t* ptr = rans_begin;
         Rans32::decInit(&rans0, &ptr);
         Rans32::decInit(&rans1, &ptr);

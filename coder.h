@@ -15,9 +15,12 @@
 #define RansAssert(x)
 #endif
 
+
+namespace rans{
+
 // State for a rANS encoder. Yep, that's all there is to it.
 template<typename T>
-using RansState = T;
+using State = T;
 
 template<typename T>
 constexpr bool needs64Bit(){
@@ -28,9 +31,9 @@ constexpr bool needs64Bit(){
 // This (admittedly odd) selection of parameters was chosen to make
 // RansEncPutSymbol as cheap as possible.
 template <typename T>
-struct RansEncSymbol
+struct EncSymbol
 {
-	RansEncSymbol(uint32_t start, uint32_t freq, uint32_t scale_bits)
+	EncSymbol(uint32_t start, uint32_t freq, uint32_t scale_bits)
 	{
 		//TODO(lettrich): a check should be definitely done here.
 		//		RansAssert(scale_bits <= 16);
@@ -126,10 +129,10 @@ struct RansEncSymbol
 };
 
 // Decoder symbols are straightforward.
-struct RansDecSymbol
+struct DecSymbol
 {
 	// Initialize a decoder symbol to start "start" and frequency "freq"
-	RansDecSymbol(uint32_t start, uint32_t freq):start(start), freq(freq)
+	DecSymbol(uint32_t start, uint32_t freq):start(start), freq(freq)
 	{
 
 		//TODO(lettrich): a check should be definitely done here.
@@ -170,12 +173,12 @@ struct RansDecSymbol
 
 // --------------------------------------------------------------------------
 template<typename T, typename Stream_t>
-class Rans {
+class Coder {
 public:
-	Rans() = delete;
+	Coder() = delete;
 
 	// Initialize a rANS encoder.
-	static void encInit(RansState<T>* r)
+	static void encInit(State<T>* r)
 	{
 		*r = lower_bound;
 	};
@@ -187,17 +190,17 @@ public:
 	// NOTE: With rANS, you need to encode symbols in *reverse order*, i.e. from
 	// beginning to end! Likewise, the output bytestream is written *backwards*:
 	// ptr starts pointing at the end of the output buffer and keeps decrementing.
-	static void encPut(RansState<T>* r, Stream_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
+	static void encPut(State<T>* r, Stream_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 	{
 		// renormalize
-		RansState<T> x = encRenorm(*r, pptr, freq, scale_bits);
+		State<T> x = encRenorm(*r, pptr, freq, scale_bits);
 
 		// x = C(s,x)
 		*r = ((x / freq) << scale_bits) + (x % freq) + start;
 	};
 
 	// Flushes the rANS encoder.
-	static void encFlush(RansState<T>* r, Stream_t** pptr)
+	static void encFlush(State<T>* r, Stream_t** pptr)
 	{
 		T x = *r;
 		Stream_t* ptr = *pptr;
@@ -221,7 +224,7 @@ public:
 
 	// Initializes a rANS decoder.
 	// Unlike the encoder, the decoder works forwards as you'd expect.
-	static void decInit(RansState<T>* r, Stream_t** pptr)
+	static void decInit(State<T>* r, Stream_t** pptr)
 	{
 		T x;
 		Stream_t* ptr = *pptr;
@@ -246,7 +249,7 @@ public:
 
 
 	// Returns the current cumulative frequency (map it to a symbol yourself!)
-	static uint32_t decGet(RansState<T>* r, uint32_t scale_bits)
+	static uint32_t decGet(State<T>* r, uint32_t scale_bits)
 	{
 		return *r & ((1u << scale_bits) - 1);
 	};
@@ -254,7 +257,7 @@ public:
 	// Advances in the bit stream by "popping" a single symbol with range start
 	// "start" and frequency "freq". All frequencies are assumed to sum to "1 << scale_bits",
 	// and the resulting bytes get written to ptr (which is updated).
-	static void decAdvance(RansState<T>* r, Stream_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
+	static void decAdvance(State<T>* r, Stream_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 	{
 		T mask = (1ull << scale_bits) - 1;
 
@@ -272,7 +275,7 @@ public:
 	// multiplications instead of a divide.
 	//
 	// See Rans32EncSymbolInit for a description of how this works.
-	static void encPutSymbol(RansState<T>* r, Stream_t** pptr, RansEncSymbol<T> const* sym, uint32_t scale_bits)
+	static void encPutSymbol(State<T>* r, Stream_t** pptr, EncSymbol<T> const* sym, uint32_t scale_bits)
 	{
 		RansAssert(sym->freq != 0); // can't encode symbol with freq=0
 
@@ -297,7 +300,7 @@ public:
 	};
 
 	// Equivalent to Rans32DecAdvance that takes a symbol.
-	static void decAdvanceSymbol(RansState<T>* r, Stream_t** pptr, RansDecSymbol const* sym, uint32_t scale_bits)
+	static void decAdvanceSymbol(State<T>* r, Stream_t** pptr, DecSymbol const* sym, uint32_t scale_bits)
 	{
 		decAdvance(r, pptr, sym->start, sym->freq, scale_bits);
 	};
@@ -305,7 +308,7 @@ public:
 	// Advances in the bit stream by "popping" a single symbol with range start
 	// "start" and frequency "freq". All frequencies are assumed to sum to "1 << scale_bits".
 	// No renormalization or output happens.
-	static void decAdvanceStep(RansState<T>* r, uint32_t start, uint32_t freq, uint32_t scale_bits)
+	static void decAdvanceStep(State<T>* r, uint32_t start, uint32_t freq, uint32_t scale_bits)
 	{
 		T mask = (1u << scale_bits) - 1;
 
@@ -315,13 +318,13 @@ public:
 	};
 
 	// Equivalent to Rans32DecAdvanceStep that takes a symbol.
-	static void decAdvanceSymbolStep(RansState<T>* r, RansDecSymbol const* sym, uint32_t scale_bits)
+	static void decAdvanceSymbolStep(State<T>* r, DecSymbol const* sym, uint32_t scale_bits)
 	{
 		decAdvanceStep(r, sym->start, sym->freq, scale_bits);
 	};
 
 	// Renormalize.
-	static inline void decRenorm(RansState<T>* r, Stream_t** pptr)
+	static inline void decRenorm(State<T>* r, Stream_t** pptr)
 	{
 		// renormalize
 		T x = *r;
@@ -343,7 +346,7 @@ public:
 private:
 
 	// Renormalize the encoder.
-	static inline RansState<T> encRenorm(RansState<T> x, Stream_t** pptr, uint32_t freq, uint32_t scale_bits)
+	static inline State<T> encRenorm(State<T> x, Stream_t** pptr, uint32_t freq, uint32_t scale_bits)
 	{
 		T x_max = ((lower_bound >> scale_bits) << stream_bits) * freq; // this turns into a shift.
 		if (x >= x_max) {
@@ -373,3 +376,4 @@ private:
 	inline static constexpr T stream_bits = sizeof(Stream_t)*8; // lower bound of our normalization interval
 
 };
+} // namespace rans
