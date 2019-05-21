@@ -14,7 +14,6 @@
 #include "platform.h"
 
 #include "helper.h"
-#include "SymbolStats.h"
 
 // This is just the sample program. All the meat is in rans_byte.h.
 using json = nlohmann::json;

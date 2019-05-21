@@ -10,5 +10,5 @@
 #include "Coder.h"
 #include "DecSymbol.h"
 #include "EncSymbol.h"
-
+#include "Dictionary.h"
 
