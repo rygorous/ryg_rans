@@ -1,5 +1,3 @@
-#include <Coder.h>
-#include "platform.h"
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -8,8 +6,10 @@
 #include <iomanip>
 #include <cmath>
 
-
 #include <nlohmann/json.hpp>
+#include "librans/rans.h"
+
+#include "platform.h"
 
 #include "helper.h"
 #include "SymbolStats.h"

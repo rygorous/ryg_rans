@@ -10,9 +10,9 @@
 #include <cstdint>
 #include <cassert>
 
-#include "ranshelpers.h"
 #include "EncSymbol.h"
 #include "DecSymbol.h"
+#include "helper.h"
 
 namespace rans{
 
