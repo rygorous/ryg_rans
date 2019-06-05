@@ -12,10 +12,10 @@
 namespace rans {
 
 // Decoder symbols are straightforward.
-struct DecSymbol
+struct DecoderSymbol
 {
 	// Initialize a decoder symbol to start "start" and frequency "freq"
-	DecSymbol(uint32_t start, uint32_t freq):start(start), freq(freq)
+	DecoderSymbol(uint32_t start, uint32_t freq):start(start), freq(freq)
 	{
 
 		//TODO(lettrich): a check should be definitely done here.

@@ -18,7 +18,7 @@ using json = nlohmann::json;
 using source_t = uint8_t;
 static const uint PROB_BITS = 18;
 using Rans64 = rans::Coder<uint64_t,uint32_t>;
-using Rans64EncSymbol = rans::EncSymbol<uint64_t>;
+using Rans64EncSymbol = rans::EncoderSymbol<uint64_t>;
 
 
 int main(int argc, char* argv[])
@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
     // try rANS encode
     uint32_t *rans_begin;
     std::vector<Rans64EncSymbol> esyms;
-    std::vector<rans::DecSymbol> dsyms;
+    std::vector<rans::DecoderSymbol> dsyms;
 
     for (size_t i=0; i < stats.size(); i++) {
 //        std::cout << "esyns[" << i << "]: " << stats.freqs[i] << ", " << stats.cum_freqs[i] << ", "<< prob_bits <<  std::endl;

@@ -10,8 +10,8 @@
 #include <cstdint>
 #include <cassert>
 
-#include "EncSymbol.h"
-#include "DecSymbol.h"
+#include "DecoderSymbol.h"
+#include "EncoderSymbol.h"
 #include "helper.h"
 
 namespace rans{
@@ -153,7 +153,7 @@ public:
 	// multiplications instead of a divide.
 	//
 	// See Rans32EncSymbolInit for a description of how this works.
-	static void encPutSymbol(State<T>* r, Stream_t** pptr, EncSymbol<T> const* sym, uint32_t scale_bits)
+	static void encPutSymbol(State<T>* r, Stream_t** pptr, EncoderSymbol<T> const* sym, uint32_t scale_bits)
 	{
 		assert(sym->freq != 0); // can't encode symbol with freq=0
 
@@ -178,7 +178,7 @@ public:
 	};
 
 	// Equivalent to Rans32DecAdvance that takes a symbol.
-	static void decAdvanceSymbol(State<T>* r, Stream_t** pptr, DecSymbol const* sym, uint32_t scale_bits)
+	static void decAdvanceSymbol(State<T>* r, Stream_t** pptr, DecoderSymbol const* sym, uint32_t scale_bits)
 	{
 		decAdvance(r, pptr, sym->start, sym->freq, scale_bits);
 	};
@@ -196,7 +196,7 @@ public:
 	};
 
 	// Equivalent to Rans32DecAdvanceStep that takes a symbol.
-	static void decAdvanceSymbolStep(State<T>* r, DecSymbol const* sym, uint32_t scale_bits)
+	static void decAdvanceSymbolStep(State<T>* r, DecoderSymbol const* sym, uint32_t scale_bits)
 	{
 		decAdvanceStep(r, sym->start, sym->freq, scale_bits);
 	};

@@ -18,9 +18,9 @@ namespace rans{
 // This (admittedly odd) selection of parameters was chosen to make
 // RansEncPutSymbol as cheap as possible.
 template <typename T>
-struct EncSymbol
+struct EncoderSymbol
 {
-	EncSymbol(uint32_t start, uint32_t freq, uint32_t scale_bits)
+	EncoderSymbol(uint32_t start, uint32_t freq, uint32_t scale_bits)
 	{
 		//TODO(lettrich): a check should be definitely done here.
 		//		RansAssert(scale_bits <= 16);

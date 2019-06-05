@@ -8,8 +8,8 @@
 #pragma once
 
 #include "Coder.h"
-#include "DecSymbol.h"
-#include "EncSymbol.h"
+#include "DecoderSymbol.h"
+#include "EncoderSymbol.h"
 #include "Dictionary.h"
 #include "SymbolStatistics.h"
 
