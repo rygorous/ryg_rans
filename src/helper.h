@@ -44,4 +44,4 @@ void read_file(const std::string& filename, std::vector<T>* tokens ){
 		is.read (reinterpret_cast<char*>(tokens->data()),length);
 		is.close();
 	}
-};
+}

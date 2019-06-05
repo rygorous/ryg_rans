@@ -11,4 +11,5 @@
 #include "DecSymbol.h"
 #include "EncSymbol.h"
 #include "Dictionary.h"
+#include "SymbolStatistics.h"
 

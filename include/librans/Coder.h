@@ -20,6 +20,8 @@ namespace rans{
 template<typename T>
 using State = T;
 
+ __extension__ typedef  unsigned __int128 uint128;
+
 // READ ME FIRST:
 //
 // This is designed like a typical arithmetic coder API, but there's three
@@ -164,7 +166,7 @@ public:
 		if constexpr (needs64Bit<T>()){
 			// This code needs support for 64-bit long multiplies with 128-bit result
 			// (or more precisely, the top 64 bits of a 128-bit result).
-			q = static_cast<T>((static_cast<unsigned __int128>(x) * sym->rcp_freq) >> 64);
+			 q = static_cast<T>((static_cast<uint128>(x) * sym->rcp_freq) >> 64);
 		}
 		else
 		{
