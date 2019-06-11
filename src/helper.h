@@ -5,6 +5,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <chrono>
 
 void panic(const char *fmt, ...);
 
@@ -44,4 +45,15 @@ void read_file(const std::string& filename, std::vector<T>* tokens ){
 		is.read (reinterpret_cast<char*>(tokens->data()),length);
 		is.close();
 	}
+}
+
+template<typename Decorated>
+auto executionTimer(Decorated && function)
+{
+	const auto t0 = std::chrono::high_resolution_clock::now();
+
+	function();
+
+	const auto t1 = std::chrono::high_resolution_clock::now();
+	return std::chrono::duration<double>(t1-t0);
 }
