@@ -17,8 +17,10 @@
 using json = nlohmann::json;
 using source_t = uint8_t;
 static const uint PROB_BITS = 18;
-using Rans64 = rans::Coder<uint64_t,uint32_t>;
-using Rans64EncSymbol = rans::EncoderSymbol<uint64_t>;
+using coder_t = uint64_t;
+using stream_t = uint32_t;
+using Rans = rans::Coder<coder_t,stream_t>;
+using RansEncSymbol = rans::EncoderSymbol<coder_t>;
 
 static const uint REPETITIONS = 5;
 
@@ -50,19 +52,19 @@ int main(int argc, char* argv[])
 
 	// cumlative->symbol table
 	// this is super brute force
-	std::vector<source_t> cum2sym(prob_scale);
+	std::vector<source_t>cum2sym(prob_scale);
 	for (size_t s=0; s < stats.size(); s++)
 		for (uint32_t i=stats[s].second; i < stats[s+1].second; i++)
 			cum2sym[i] = (s + stats.minSymbol());
 
 	const size_t out_max_size = 32<<20; // 32MB
-	const size_t out_max_elems = out_max_size / sizeof(uint32_t);
-	std::vector<uint32_t>out_buf(out_max_elems);
-	uint32_t* out_end = &out_buf.back();
+	const size_t out_max_elems = out_max_size / sizeof(stream_t);
+	std::vector<stream_t>out_buf(out_max_elems);
+	const stream_t* out_end = &out_buf.back();
 	std::vector<source_t> dec_bytes(tokens.size(),0xcc);
 
-	uint32_t *rans_begin;
-	std::vector<Rans64EncSymbol> esyms;
+	stream_t *rans_begin;
+	std::vector<RansEncSymbol> esyms;
 	std::vector<rans::DecoderSymbol> dsyms;
 
 	for (size_t i=0; i < stats.size(); i++) {
@@ -78,36 +80,37 @@ int main(int argc, char* argv[])
 	std::cout << std::endl <<"Non-Interleaved:" << std::endl;
 	timedRun(run_summary,ExecutionMode::NonInterleaved,CodingMode::Encode,REPETITIONS,
 			[&](){
-		rans::State<uint64_t> rans;
-		Rans64::encInit(&rans);
+		rans::State<coder_t> rans;
+		Rans::encInit(&rans);
 
-		uint32_t* ptr = out_end; // *end* of output buffer
+		stream_t* ptr = out_end; // *end* of output buffer
 		for (size_t i=tokens.size(); i > 0; i--) { // NB: working in reverse!
 			source_t s = tokens[i-1];
 			size_t normalized = s - stats.minSymbol();
 
 			//            std::cout << "s: " << s << ", esyns[" << normalized << "]: " << esyms[normalized].freq << std::endl;
-			Rans64::encPutSymbol(&rans, &ptr, &esyms[normalized], prob_bits);
+			//            Rans32::encPut(&rans, &ptr, stats.cum_freqs[normalized], stats.freqs[normalized], prob_bits);
+			Rans::encPutSymbol(&rans, &ptr, &esyms[normalized], prob_bits);
 		}
-		Rans64::encFlush(&rans, &ptr);
+		Rans::encFlush(&rans, &ptr);
 		rans_begin = ptr;
 	});
 
 	timedRun(run_summary,ExecutionMode::NonInterleaved,CodingMode::Decode,REPETITIONS,[&](){
-		rans::State<uint64_t> rans;
-		uint32_t* ptr = rans_begin;
-		Rans64::decInit(&rans, &ptr);
+		rans::State<coder_t> rans;
+		stream_t* ptr = rans_begin;
+		Rans::decInit(&rans, &ptr);
 
 		for (size_t i=0; i < tokens.size(); i++) {
-			source_t s = cum2sym[Rans64::decGet(&rans, prob_bits)];
+			source_t s = cum2sym[Rans::decGet(&rans, prob_bits)];
 			dec_bytes[i] = s;
 			const size_t normalized = s - stats.minSymbol();
 			//            std::cout << "s: " << s << ", dsyms[" << normalized << "]: " << dsyms[normalized].freq << std::endl;
-			Rans64::decAdvanceSymbol(&rans, &ptr, &dsyms[normalized], prob_bits);
+			Rans::decAdvanceSymbol(&rans, &ptr, &dsyms[normalized], prob_bits);
 		}
 	});
 
-	int encodeSize = static_cast<int>(&out_buf.back() - rans_begin) * sizeof(uint32_t);
+	unsigned int encodeSize = static_cast<unsigned int>(&out_buf.back() - rans_begin) * sizeof(stream_t);
 	std::cout << "Encode Size :" << encodeSize << " Bytes"<< std::endl;
 	run_summary["NonInterleaved"]["Size"].push_back(encodeSize);
 
@@ -126,17 +129,18 @@ int main(int argc, char* argv[])
 
 	timedRun(run_summary,ExecutionMode::Interleaved,CodingMode::Encode,REPETITIONS,
 			[&](){
-		rans::State<uint64_t> rans0, rans1;
-		Rans64::encInit(&rans0);
-		Rans64::encInit(&rans1);
+		rans::State<coder_t> rans0, rans1;
+		Rans::encInit(&rans0);
+		Rans::encInit(&rans1);
 
-		uint32_t* ptr = out_end;
+		stream_t* ptr = out_end;
 
 		// odd number of bytes?
 		if (tokens.size() & 1) {
 			const int s = tokens.back();
 			const size_t normalized = s - stats.minSymbol();
-			Rans64::encPutSymbol(&rans0, &ptr, &esyms[normalized], prob_bits);
+			Rans::encPutSymbol(&rans0, &ptr, &esyms[normalized], prob_bits);
+			//            Rans::encPut(&rans0, &ptr, stats.cum_freqs[normalized], stats.freqs[normalized], prob_bits);
 		}
 
 		for (size_t i=(tokens.size() & ~1); i > 0; i -= 2) { // NB: working in reverse!
@@ -145,44 +149,46 @@ int main(int argc, char* argv[])
 			const size_t normalized1 = s1 - stats.minSymbol();
 			const size_t normalized0 = s0 - stats.minSymbol();
 
-			Rans64::encPutSymbol(&rans1, &ptr, &esyms[normalized1], prob_bits);
-			Rans64::encPutSymbol(&rans0, &ptr, &esyms[normalized0], prob_bits);
+			Rans::encPutSymbol(&rans1, &ptr, &esyms[normalized1], prob_bits);
+			Rans::encPutSymbol(&rans0, &ptr, &esyms[normalized0], prob_bits);
+			//            Rans::encPut(&rans1, &ptr, stats.cum_freqs[normalized1], stats.freqs[normalized1], prob_bits);
+			//            Rans::encPut(&rans0, &ptr, stats.cum_freqs[normalized0], stats.freqs[normalized0], prob_bits);
 		}
-		Rans64::encFlush(&rans1, &ptr);
-		Rans64::encFlush(&rans0, &ptr);
+		Rans::encFlush(&rans1, &ptr);
+		Rans::encFlush(&rans0, &ptr);
 		rans_begin = ptr;
 	});
 
 	timedRun(run_summary,ExecutionMode::Interleaved,CodingMode::Decode,REPETITIONS,
 			[&](){
-		rans::State<uint64_t> rans0, rans1;
-		uint32_t* ptr = rans_begin;
-		Rans64::decInit(&rans0, &ptr);
-		Rans64::decInit(&rans1, &ptr);
+		rans::State<coder_t> rans0, rans1;
+		stream_t* ptr = rans_begin;
+		Rans::decInit(&rans0, &ptr);
+		Rans::decInit(&rans1, &ptr);
 
 		for (size_t i=0; i < (tokens.size() & ~1); i += 2) {
-			const uint32_t s0 = cum2sym[Rans64::decGet(&rans0, prob_bits)];
-			const uint32_t s1 = cum2sym[Rans64::decGet(&rans1, prob_bits)];
+			const uint32_t s0 = cum2sym[Rans::decGet(&rans0, prob_bits)];
+			const uint32_t s1 = cum2sym[Rans::decGet(&rans1, prob_bits)];
 			dec_bytes[i+0] = s0;
 			dec_bytes[i+1] = s1;
 			const size_t normalized0 = s0 - stats.minSymbol();
 			const size_t normalized1 = s1 - stats.minSymbol();
-			Rans64::decAdvanceSymbolStep(&rans0, &dsyms[normalized0], prob_bits);
-			Rans64::decAdvanceSymbolStep(&rans1, &dsyms[normalized1], prob_bits);
-			Rans64::decRenorm(&rans0, &ptr);
-			Rans64::decRenorm(&rans1, &ptr);
+			Rans::decAdvanceSymbolStep(&rans0, &dsyms[normalized0], prob_bits);
+			Rans::decAdvanceSymbolStep(&rans1, &dsyms[normalized1], prob_bits);
+			Rans::decRenorm(&rans0, &ptr);
+			Rans::decRenorm(&rans1, &ptr);
 		}
 
 		// last byte, if number of bytes was odd
 		if (tokens.size() & 1) {
-			const uint32_t s0 = cum2sym[Rans64::decGet(&rans0, prob_bits)];
+			const uint32_t s0 = cum2sym[Rans::decGet(&rans0, prob_bits)];
 			dec_bytes[tokens.size() - 1] = s0;
 			const size_t normalized = s0 - stats.minSymbol();
-			Rans64::decAdvanceSymbol(&rans0, &ptr, &dsyms[normalized], prob_bits);
+			Rans::decAdvanceSymbol(&rans0, &ptr, &dsyms[normalized], prob_bits);
 		}
 	});
 
-	encodeSize = static_cast<int>(&out_buf.back() - rans_begin) * sizeof(uint32_t);
+	encodeSize = static_cast<unsigned int>(&out_buf.back() - rans_begin) * sizeof(stream_t);
 	std::cout << "Encode Size :" << encodeSize << " Bytes"<< std::endl;
 	run_summary["Interleaved"]["Size"].push_back(encodeSize);
 
