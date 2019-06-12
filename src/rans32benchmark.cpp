@@ -5,7 +5,6 @@
 #include <fstream>
 #include <iomanip>
 #include <chrono>
-#include <cmath>
 
 #include <nlohmann/json.hpp>
 #include "librans/rans.h"
@@ -62,7 +61,6 @@ int main(int argc, char* argv[])
 	//    uint8_t* out_end = &out_buf.back();
 	std::vector<source_t> dec_bytes(tokens.size(),0xcc);
 
-	// try rANS encode
 	uint8_t *rans_begin;
 	std::vector<Rans32EncSymbol> esyms;
 	std::vector<rans::DecoderSymbol> dsyms;
