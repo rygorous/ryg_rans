@@ -16,11 +16,24 @@
 // This is just the sample program. All the meat is in rans_byte.h.
 using json = nlohmann::json;
 using source_t = uint8_t;
+
+////////////////////////////////////////////////////////////////
+// use this definition for 32bit coder/decoder
+#ifdef rans32
+static const uint PROB_BITS = 14;
+using coder_t = uint32_t;
+using stream_t = uint8_t;
+using Rans = rans::Coder<coder_t,stream_t>;
+using RansEncSymbol = rans::EncoderSymbol<coder_t>;
+#else
+////////////////////////////////////////////////////////////////
+// use this definition for 64bit coder/decoder
 static const uint PROB_BITS = 18;
 using coder_t = uint64_t;
 using stream_t = uint32_t;
 using Rans = rans::Coder<coder_t,stream_t>;
 using RansEncSymbol = rans::EncoderSymbol<coder_t>;
+#endif
 
 static const uint REPETITIONS = 5;
 
@@ -83,7 +96,7 @@ int main(int argc, char* argv[])
 		rans::State<coder_t> rans;
 		Rans::encInit(&rans);
 
-		stream_t* ptr = out_end; // *end* of output buffer
+		stream_t* ptr = const_cast<stream_t*>(out_end); // *end* of output buffer
 		for (size_t i=tokens.size(); i > 0; i--) { // NB: working in reverse!
 			source_t s = tokens[i-1];
 			size_t normalized = s - stats.minSymbol();
@@ -133,7 +146,7 @@ int main(int argc, char* argv[])
 		Rans::encInit(&rans0);
 		Rans::encInit(&rans1);
 
-		stream_t* ptr = out_end;
+		stream_t* ptr = const_cast<stream_t*>(out_end);
 
 		// odd number of bytes?
 		if (tokens.size() & 1) {
