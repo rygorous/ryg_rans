@@ -5,7 +5,15 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <chrono>
+
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+
+
+static constexpr uint32_t BIT_TO_BITES = 8;
+static constexpr uint32_t BIT_TO_MIB = 1048576 * BIT_TO_BITES;
 
 void panic(const char *fmt, ...);
 
@@ -56,4 +64,32 @@ auto executionTimer(Decorated && function)
 
 	const auto t1 = std::chrono::high_resolution_clock::now();
 	return std::chrono::duration<double>(t1-t0);
+}
+
+enum class ExecutionMode{NonInterleaved,Interleaved};
+enum class CodingMode{Encode,Decode};
+
+std::string toString(ExecutionMode mode);
+std::string toString(CodingMode mode);
+
+template<typename Decorated>
+void timedRun(json& runSummary, ExecutionMode executionMode, CodingMode codingMode, size_t numberOfRuns, Decorated && function)
+{
+	const std::string execModeStr = toString(executionMode);
+	const std::string codingModeStr = toString(codingMode);
+	std::vector<double> results;
+	// run benchmark a certain amount of times
+	for (size_t run=0; run < numberOfRuns; run++) {
+		auto duration = executionTimer(function);
+		results.push_back(1.0 * (runSummary.at("NumberOfSymbols").get<size_t>() * runSummary.at("SymbolRange").get<size_t>())  / (duration.count() * BIT_TO_MIB)); //Bit -> MiB
+	}
+	std::cout << "Bandwidth " << codingModeStr << ": [";
+	for (auto result : results){
+		std::cout << std::setprecision(4) << result << ", ";
+	}
+	std::cout << "] MiB/s" << std::endl;
+
+	json tmp(results);
+	runSummary[execModeStr][codingModeStr] = json::array();
+	runSummary[execModeStr][codingModeStr].insert(runSummary[execModeStr][codingModeStr].begin(),tmp.begin(),tmp.end());
 }

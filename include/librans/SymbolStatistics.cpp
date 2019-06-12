@@ -7,7 +7,7 @@ namespace rans {
 void SymbolStatistics::rescaleFrequencyTable(uint32_t newCumulatedFrequency){
 	assert(newCumulatedFrequency >= frequencyTable_.size());
 
-	std:: cout << "min: " <<min_ << " max: " << max_ << std::endl;
+	//	std:: cout << "min: " <<min_ << " max: " << max_ << std::endl;
 	//	    for(int i = 0; i<static_cast<int>(freqs.size()); i++){
 	//	    	std::cout << i << ": " << i + min << " " << freqs[i] << " " << cum_freqs[i] << std::endl;
 	//	    }

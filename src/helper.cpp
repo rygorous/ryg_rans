@@ -26,3 +26,33 @@ void read_args(int argc, char** argv, cmd_args& args){
     	throw std::runtime_error("syntax main.exe <filename> [<probability_bits>]");
     }
 }
+
+std::string toString(ExecutionMode mode)
+{
+
+	switch (mode) {
+		case ExecutionMode::NonInterleaved:
+			return "NonInterleaved";
+			break;
+		case ExecutionMode::Interleaved:
+			return "Interleaved";
+			break;
+		default:
+			throw std::runtime_error("unknown ExecutionMode");
+			break;
+	}
+}
+
+std::string toString(CodingMode mode){
+	switch (mode) {
+		case CodingMode::Encode:
+			return "Encode";
+			break;
+		case CodingMode::Decode:
+			return "Decode";
+			break;
+		default:
+			throw std::runtime_error("unknown CodingMode");
+			break;
+	}
+}
