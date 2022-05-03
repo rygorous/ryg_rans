@@ -72,7 +72,7 @@ static inline void Rans64EncInit(Rans64State* r)
 // resulting bytes get written to ptr (which is updated).
 //
 // NOTE: With rANS, you need to encode symbols in *reverse order*, i.e. from
-// beginning to end! Likewise, the output bytestream is written *backwards*:
+// end to beginning! Likewise, the output bytestream is written *backwards*:
 // ptr starts pointing at the end of the output buffer and keeps decrementing.
 static inline void Rans64EncPut(Rans64State* r, uint32_t** pptr, uint32_t start, uint32_t freq, uint32_t scale_bits)
 {
