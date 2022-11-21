@@ -347,3 +347,17 @@ int main()
     delete[] in_bytes;
     return 0;
 }
+ntf("%"PRIu64" clocks, %.1f clocks/symbol (%5.1fMB/s)\n", dec_clocks, 1.0 * dec_clocks / in_size, 1.0 * in_size / (dec_time * 1048576.0));
+    }
+
+    // check decode results
+    if (memcmp(in_bytes, dec_bytes, in_size) == 0)
+        printf("decode ok!\n");
+    else
+        printf("ERROR: bad decoder!\n");
+
+    delete[] out_buf;
+    delete[] dec_bytes;
+    delete[] in_bytes;
+    return 0;
+}
